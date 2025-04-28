@@ -1,0 +1,59 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Quicksand:wght@300;400;500;600;700&display=swap");
+
+:root {
+  --vt-c-white: #ffffff;
+  --vt-c-black: #181818;
+  --vt-c-indigo: #2c3e50;
+  --vt-c-gray: #4f6262;
+  --vt-c-gray-1: #4f5662;
+  --vt-c-gray-2: #7f7f7f;
+  --vt-c-gray-3: #d4d4d4;
+  --vt-c-gray-4: #828282;
+  --vt-c-gray-5: #64748b;
+
+  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
+  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
+
+  --color-background: #dde9ef;
+  --color-text: var(--vt-c-indigo);
+
+  --section-gap: 160px;
+
+  /* Base Color For Figma UI */
+  --c-dark-navy: #26465a;
+  --c-navy: #346888;
+  --c-navy-green: #006666;
+  --c-navy-light: #397499;
+  --c-sky-blue: #4592c3;
+  --c-dark-gray-blue: #464e5f;
+  --c-gray-blue: #4f5662;
+  --c-gray: #7f7f7f;
+  --c-light-blue: #97bbd2;
+  --c-blue-tint: #b7d1de;
+  --c-soft-blue: #dde9ef;
+  --c-soft-blue-1: #e9f3f8;
+  --c-orange: #fb8b01;
+  --c-soft-orange: #ffb042;
+  --c-light-orange: #fff6ea;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  font-weight: normal;
+}
+
+body {
+  min-height: 100vh;
+  color: var(--color-text);
+  background: var(--color-background);
+  transition: color 0.5s, background-color 0.5s;
+  line-height: 1.6;
+  font-family: "Inter", sans-serif;
+  font-size: 15px;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

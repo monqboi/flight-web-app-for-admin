@@ -1,0 +1,18 @@
+@import "./base.css";
+
+#app {
+  margin: 0 auto;
+  font-weight: normal;
+}
+
+.app-container {
+  display: flex;
+  height: 100vh;
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  color: var(--c-light-navy);
+  overflow-y: auto;
+}
