@@ -253,6 +253,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 10;
   }
   
   .modal-content input,
@@ -302,6 +303,24 @@
     padding: 10px 25px; font-size: 14px; border: none;
     border-radius: 6px; font-weight: bold; cursor: pointer;
   }
+  .save-btn {
+    background-color: #ffc107;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  
+  .discard-btn {
+    background-color: #1d3a4c;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  
 
   .switch {
   position: relative;
