@@ -2,8 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import db from "../db.js";
 
-import flightRouter from "./routes/flight.js";
 import airlineRouter from "./routes/airline.js";
+import flightRouter from "./routes/flight.js";
+import reservationRouter from "./routes/reservation.js";
+import aircraftRouter from "./routes/aircraft.js";
 import paymentRouter from "./routes/payment.js";
 
 const app = express();
@@ -19,8 +21,10 @@ app.get('/', (req, res) => {
 });
 
 // Use routers
-app.use("/flight", flightRouter);  
 app.use("/airline", airlineRouter);  
+app.use("/flight", flightRouter);  
+app.use("/aircraft", resercRouter);  
+app.use("/aircraft", aircraftRouter);  
 app.use("/payment", paymentRouter);  
 
 

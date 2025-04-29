@@ -18,12 +18,12 @@ router.get("/", (req, res) => {
     });
   });
 
-// Get a specific Airline
+// Get a single Airline by ID
 router.get("/:id", (req, res) => {
-  const airlineID = req.params.id;
+  const airlineId = req.params.id;
   const query = "SELECT * FROM Airline WHERE AirlineID = ?";
 
-  db.query(query, [airlineID], (err, result) => {
+  db.query(query, [airlineId], (err, result) => {
     if (err) {
       console.error(err);
       return res.status(500).send("Error retrieving airline");
@@ -34,73 +34,98 @@ router.get("/:id", (req, res) => {
     res.json(result[0]);
   });
 });
-  
+
 // Create a new Airline
 router.post("/", (req, res) => {
   const {
-    airlineID,
-    name,
-    name_short,
-    code,
-    contactPrefix,
-    contactNumber,
-    country,
-    headquarters,
-    airlineStatus,
-    airlineColor,
-    airlineImage // Base64 Img
+    airlineId, // INTEGER: SG1234
+    name, // 'Singapore Airlines'
+    name_short, // VARCHAR(10): 'SIA'
+    code, // VARCHAR(10): 'SG'
+    contactPrefix, // VARCHAR(5): '+65'
+    contactNumber, // VARCHAR(20): '62238888'
+    country, // VARCHAR(50): 'Singapore'
+    headquarters, // VARCHAR(50): 'Changi Airport, Singapore'
+    airlineStatus, // ENUM('Open', 'Temporarily closed')
+    airlineColor, // #ffffff
+    airlineImage // TEXT: Base64 String
   } = req.body;
 
-  // Validate: Required fields
-  if (!airlineID || !name || !name_short || !code || !contactPrefix || !contactNumber || !country || !headquarters || !airlineStatus || !airlineColor || !airlineImage) {
-    return res.status(400).send("Missing required fields");
-  }
+  // Ensure name_short & code is Uppercase, and avoid whitespace issues
+  const name_shortUpper = name_short.trim().toUpperCase();
+  const codeUpper = code.trim().toUpperCase();
 
-  const query = `
-    INSERT INTO Airline 
-    (AirlineID, Name, AirlineNameShort, Code, ContactPrefix, ContactNumber, Country, Headquarters, AirlineStatus, AirlineColor, AirlineLogo)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
+  // Ensure status sent is correct as the system supports.
+  //const allowedStatuses = ['Open', 'Temporarily closed'];
+  //if (!allowedStatuses.includes(airlineStatus)) {
+  //  return res.status(400).send("Invalid status value.");
+  //}
 
-  const values = [
-    airlineID,
-    name,
-    name_short,
-    code,
-    contactPrefix,
-    contactNumber,
-    country,
-    headquarters,
-    airlineStatus,
-    airlineColor,
-    airlineImage // Base64 String
-  ];
+  //Check if airlineID already exists
+  const checkQuery = "SELECT * FROM Airline WHERE AirlineID = ?";
 
-  db.query(query, values, (err, results) => {
+  db.query(checkQuery, [airlineId], (err, results) => {
     if (err) {
       console.error(err);
-      return res.status(500).send("Database error when creating airline");
+      return res.status(500).send("Error checking airline ID");
     }
-    res.status(201).json({ message: "Airline created successfully" });
+
+    if (results.length > 0) {
+      // If airlineID exists, return an error
+      return res.status(400).send("Airline ID already exists");
+    }
+
+    // If airlineID doesn't exist, proceed with insertion
+    const insertQuery = `
+      INSERT INTO Airline 
+      (AirlineID, Name, AirlineNameShort, Code, ContactPrefix, ContactNumber, Country, Headquarters, AirlineStatus, AirlineColor, AirlineLogo)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+
+    const values = [
+      airlineId,
+      name,
+      name_shortUpper,
+      codeUpper, 
+      contactPrefix, 
+      contactNumber, 
+      country, 
+      headquarters, 
+      airlineStatus, 
+      airlineColor, 
+      airlineImage 
+    ];
+
+    db.query(insertQuery, values, (err, results) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).send("Error adding new airline");
+      }
+      res.status(201).json({
+        message: "Airline added successfully",
+        airlineId });
+    });
   });
 });
 
-// Update Airline Status ('Open', 'Tempolarily Closed')
+// Update Airline Status ('Open', 'Temporarily closed')
 router.put("/:id/status", (req, res) => {
-  const airlineID = req.params.id;
+  const airlineId = req.params.id;
   const { airlineStatus } = req.body;
 
-  if (!airlineStatus) {
-    return res.status(400).send("Missing airlineStatus field");
-  }
+  // Ensure status sent is correct as the system supports.
+  //const allowedStatuses = ['Open', 'Temporarily closed'];
+  //if (!allowedStatuses.includes(airlineStatus)) {
+  //  return res.status(400).send("Invalid status value.");
+  //}
 
   const query = `
     UPDATE Airline 
-    SET AirlineStatus = ?
+    SET AirlineStatus = ? 
     WHERE AirlineID = ?
   `;
 
-  db.query(query, [airlineStatus, airlineID], (err, results) => {
+  db.query(query, [airlineStatus, airlineId], (err, results) => {
     if (err) {
       console.error(err);
       return res.status(500).send("Database error when updating airline status");

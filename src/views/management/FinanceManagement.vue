@@ -63,18 +63,17 @@
     <div class="modal" v-if="showAddModal">
       <div class="modal-content user-form">
         <h3>{{ editingPayment ? 'Edit Payment' : 'Add Payment' }}</h3>
+
         <div class="form-row">
-          <input type="text" v-model="form.id" placeholder="Payment ID"/>
+          <input type="text" v-model="form.id" placeholder="Payment ID" :disabled="editingPayment" />
           <input type="text" v-model="form.reservationId" placeholder="Reservation ID" />
         </div>
+
         <div class="form-row">
           <input type="text" v-model="form.userId" placeholder="User ID" />
-          <input type="text" v-model="form.username" placeholder="Username" />
-        </div>
-        <div class="form-row">
-          <input type="text" v-model="form.route" placeholder="Route" />
           <input type="date" v-model="form.date" />
         </div>
+
         <div class="form-row">
           <input type="number" v-model="form.amount" placeholder="Amount" />
           <select v-model="form.status">
@@ -83,12 +82,24 @@
             <option>Failed</option>
           </select>
         </div>
-        <div class="modal-actions">
-          <button class="save-btn" @click="savePayment">✔ Save</button>
-          <button class="discard-btn" @click="discardPayment">✖ Discard</button>
+
+        <div class="form-row">
+          <select v-model="form.method">
+            <option disabled value="">Select Payment Method</option>
+            <option>Credit Card</option>
+            <option>Paypal</option>
+            <option>Bank Transfer</option>
+          </select>
         </div>
+      
+
+      <div class="modal-actions">
+        <button class="save-btn" @click="savePayment">✔ Save</button>
+        <button class="discard-btn" @click="discardPayment">✖ Discard</button>
       </div>
     </div>
+    </div>
+
 
     <!-- Pagination -->
     <div class="pagination">
@@ -108,7 +119,6 @@
 
 <script setup>
 import { ref, reactive, computed } from 'vue';
-import Dropdown from '@/components/Dropdown.vue';
 const searchQuery = ref('');
 const showAddModal = ref(false);
 const editingPayment = ref(false);
@@ -122,7 +132,13 @@ const payments = reactive([
   { id: 'PMT-002', reservationId: 'RSV-2023102', userId: 'USR002', username: 'jaturon93', route: 'DMK → CNX', date: '2024-04-04', amount: 3200, status: 'Success' }
 ]);
 
-const form = reactive({ id: '', reservationId: '', userId: '', username: '', route: '', date: '', amount: null, status: 'Pending' });
+const form = reactive({   id: '', 
+  reservationId: '', 
+  userId: '', 
+  date: '', 
+  amount: null, 
+  status: 'Pending',
+  method: '' });
 
 const filteredPayments = computed(() => {
   return payments.filter(p => {
@@ -149,17 +165,16 @@ function openModal(payment = null) {
     Object.assign(form, payment);
   } else {
     Object.assign(form, {
-      id: '',
-      reservationId: '',
-      userId: '',
-      username: '',
-      route: '',
-      date: '',
-      amount: null,
+      id: '', 
+      reservationId: '', 
+      userId: '', 
+      date: '', 
+      amount: null, 
       status: 'Pending',
+      method: '',
     });
   }
-  showAddModal.value = true; // ✅ เปลี่ยนตรงนี้
+  showAddModal.value = true;
 }
 
 

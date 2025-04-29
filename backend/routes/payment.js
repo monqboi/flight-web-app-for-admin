@@ -38,7 +38,7 @@ router.get("/:id", (req, res) => {
 // Create a new payment
 router.post("/", (req, res) => {
   const {
-    paymentID,
+    paymentID, //
     reservationID,
     userID,
     username,
@@ -103,7 +103,8 @@ router.put("/:id", (req, res) => {
     amount,
     paymentMethod,
     paymentDate, 
-    status
+    status,
+    paymentID
   ];
 
   db.query(query, values, (err, results) => {

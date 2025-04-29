@@ -10,15 +10,15 @@ const router = express.Router();
 router.get("/", (req, res) => {
   const query = "SELECT * FROM Flight";
 
-  db.query(query, (err, results) => {
+  db.query(query, (err, results) => { 
     if (err) {
       console.error(err);
       return res.status(500).send("Error retrieving flights");
     }
 
     const formattedResults = results.map((flight) => {
-      const departureDateTime = new Date(flight.DepartureTime);
-      const arrivalDateTime = new Date(flight.ArrivalTime);
+    const departureDateTime = new Date(flight.DepartureTime);
+    const arrivalDateTime = new Date(flight.ArrivalTime);
 
       return {
         ...flight,
@@ -67,42 +67,47 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   try {
     const {
-      airlineId,
-      departure,
-      destination,
-      departureDate,    // 'Mar 09, 2024'
-      departureTime,    // '18:00'
-      arrivalDate,      // 'Mar 10, 2024'
+      airlineId, // INTEGER: 1234
+      departure, // VARCHAR(100): 'BKK'
+      destination, // VARCHAR(100): 'USA'
+      departureDate,    // '2025-05-15'
+      departureTime,    // '18:00' 
+      arrivalDate,      // '2025-05-16'
       arrivalTime,      // '07:00'
-      stopOver,         // '1 Stop'
-      duration,         // 660
-      aircraftId,       // aircraft id (integer)
-      status            // 'Pending' | 'Delayed' | 'Completed' | 'Canceled'
+      stopOver,         // VARCHAR(100): 'JPN, KR'
+      duration,         // INTEGER: 660
+      aircraftId,       // INTEGER: 1234
+      status            // ENUM('Pending', 'Delayed', 'Completed', 'Canceled')
     } = req.body;
 
-    if (!airlineId || !departure || !destination || !departureDate || !departureTime || !arrivalDate || !arrivalTime || !stopOver || !duration || !aircraftId || !status) {
-      return res.status(400).send("Missing required fields");
-    }
+    // Ensure departure & destination is Uppercase
+    const departureUpper = departure.toUpperCase();
+    const destinationUpper = destination.toUpperCase();
 
     // Validate: Departure !== Destination
-    if (departure === destination) {
+    if (departureUpper === destinationUpper) {
       return res.status(400).send("Departure and destination must be different.");
     }
     
-    // Combine Departure datetime
+    // Combine datetime
     const departureDateTime = combineDateTime(departureDate, departureTime);
-
-    // Combine Arrival datetime
-    let arrivalDateTime = combineDateTime(arrivalDate, arrivalTime);
+    const arrivalDateTime = combineDateTime(arrivalDate, arrivalTime);
 
     // Validate: DepartureTime must be before ArrivalTime
     if (new Date(departureDateTime) >= new Date(arrivalDateTime)) {
       return res.status(400).send("Departure time must be before arrival time.");
     }
 
+    // Ensure duration > 0
     if (duration <= 0) {
       return res.status(400).send("Duration must be a positive number.");
     }
+
+    // Ensure status sent is correct as the system supports.
+    //const allowedStatuses = ['Pending', 'Delayed', 'Completed', 'Canceled'];
+    //if (!allowedStatuses.includes(status)) {
+    //  return res.status(400).send("Invalid status value.");
+    //}
 
     const query = `
       INSERT INTO Flight (AirlineID, Departure, Destination, DepartureTime, ArrivalTime, StopOver, Duration, AircraftID, Status)
@@ -111,10 +116,10 @@ router.post("/", (req, res) => {
 
     const values = [
       airlineId,
-      departure,
-      destination,
-      departureDateTime,
-      arrivalDateTime,
+      departureUpper,
+      destinationUpper,
+      departureDateTime, // DATETIME: '2025-05-15 22:00'
+      arrivalDateTime, // DATETIME: '2025-05-16 6:00'
       stopOver,
       duration,
       aircraftId,
@@ -126,7 +131,10 @@ router.post("/", (req, res) => {
         console.error(err);
         return res.status(500).send("Database error when inserting flight");
       }
-      res.status(201).json({ message: "Flight created successfully" });
+      res.status(201).json({
+        message: "Flight created successfully", 
+        flightId: results.insertId 
+      }); 
     });
 
   } catch (error) {
@@ -151,26 +159,35 @@ router.put("/:id", (req, res) => {
     status           
   } = req.body;
   
-  // Validate: Departure !== Destination
-  if (departure === destination) {
+  // Ensure departure & destination is Uppercase
+  const departureUpper = departure.toUpperCase();
+  const destinationUpper = destination.toUpperCase();
+
+  // Validate: Departure != Destination
+  if (departureUpper === destinationUpper) {
     return res.status(400).send("Departure and destination must be different.");
   }
   
-  // Combine Departure datetime
+  // Combine datetime
   const departureDateTime = combineDateTime(departureDate, departureTime);
-
-  // Combine Arrival datetime
-  let arrivalDateTime = combineDateTime(arrivalDate, arrivalTime);
+  const arrivalDateTime = combineDateTime(arrivalDate, arrivalTime);
 
   // Validate: DepartureTime must be before ArrivalTime
   if (new Date(departureDateTime) >= new Date(arrivalDateTime)) {
     return res.status(400).send("Departure time must be before arrival time.");
   }
 
+  // Ensure duration > 0
   if (duration <= 0) {
     return res.status(400).send("Duration must be a positive number.");
   }
 
+  // Ensure status sent is correct as the system supports.
+  const allowedStatuses = ['Pending', 'Delayed', 'Completed', 'Canceled'];
+  if (!allowedStatuses.includes(status)) {
+    return res.status(400).send("Invalid status value.");
+  }
+  
   const query = `
     UPDATE Flight 
     SET Departure = ?, Destination = ?, DepartureTime = ?, ArrivalTime = ?, StopOver = ?, Duration = ?, AircraftID = ?, Status = ?
@@ -178,8 +195,8 @@ router.put("/:id", (req, res) => {
   `;
 
   const values = [
-      departure,
-      destination,
+      departureUpper,
+      destinationUpper,
       departureDateTime,
       arrivalDateTime,
       stopOver,
@@ -190,6 +207,9 @@ router.put("/:id", (req, res) => {
   ];
 
   db.query(query, values, (err, results) => {
+    if (results.affectedRows === 0) {
+      return res.status(404).send("Flight not found");
+    }
     if (err) {
       console.error(err);
       return res.status(500).send("Error updating flight");
@@ -208,42 +228,10 @@ router.delete("/:id", (req, res) => {
       console.error(err);
       return res.status(500).send("Error deleting flight");
     }
+    if (results.affectedRows === 0) {
+      return res.status(404).send("Flight not found");
+    }
     res.json({ message: "Flight deleted successfully" });
-  });
-});
- 
-// ------------- Aircraft -------------
-
-// Get all Aircrafts
-router.get("/aircraft", (req, res) => {
-  const query = "SELECT * FROM Aircraft";
-
-  db.query(query, (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Error retrieving aircraft");
-    }
-    res.json(results);
-  });
-});
-
-// Update Aircraft status ('Available', 'Not Available')
-router.put("/aircraft/:id/status", (req, res) => {
-  const aircraftID = req.params.id;
-  const { status } = req.body;
-
-  const query = `
-    UPDATE Aircraft
-    SET Status = ?
-    WHERE AircraftID = ?
-  `;
-
-  db.query(query, [status, aircraftID], (err, results) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Error updating aircraft status");
-    }
-    res.json({ message: "Aircraft status updated successfully" });
   });
 });
 
