@@ -23,8 +23,8 @@ app.get('/', (req, res) => {
 // Use routers
 app.use("/airline", airlineRouter);  
 app.use("/flight", flightRouter);  
-app.use("/aircraft", resercRouter);  
 app.use("/aircraft", aircraftRouter);  
+app.use("/reservation", reservationRouter);  
 app.use("/payment", paymentRouter);  
 
 

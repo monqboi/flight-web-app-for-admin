@@ -3,6 +3,8 @@ import db from "../db.js";
 
 const router = express.Router();
 
+// ------------- Aircraft -------------
+
 // Get all Aircrafts
 router.get("/aircraft", (req, res) => {
     const query = "SELECT * FROM Aircraft";

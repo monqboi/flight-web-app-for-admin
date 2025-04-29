@@ -38,17 +38,16 @@ router.get("/:id", (req, res) => {
 // Create a new payment
 router.post("/", (req, res) => {
   const {
-    paymentID, //
-    reservationID,
-    userID,
-    username,
-    amount,
-    paymentMethod,
-    paymentDate, 
-    status
+    paymentID, // INTEGER: 1234
+    reservationID, // INTEGER: 1234
+    userID, // INTEGER: 1234
+    amount, // INTEGER: 1234
+    paymentMethod,  // ENUM('Pending', 'Success', 'Failed')
+    paymentDate, // DATETIME: '2025-05-15 8:00'
+    status // ENUM('Credit Card', 'Paypal', 'Bank Transfer')
   } = req.body;
 
-  if (!paymentID || !reservationID || !userID || !username || !amount || !paymentMethod || !paymentDate || !status) {
+  if (!paymentID || !reservationID || !userID || !amount || !paymentMethod || !paymentDate || !status) {
     return res.status(400).send("Missing required fields");
   }
 
@@ -83,7 +82,6 @@ router.put("/:id", (req, res) => {
   const {
     reservationID,
     userID,
-    username,
     amount,
     paymentMethod,
     paymentDate, 
@@ -92,14 +90,13 @@ router.put("/:id", (req, res) => {
 
   const query = `
     UPDATE Payment
-    SET ReservationID = ?, UserID = ?, Username = ?, Amount = ?, PaymentMethod = ?, PaymentDate = ?, Status = ?
+    SET ReservationID = ?, UserID = ?, Amount = ?, PaymentMethod = ?, PaymentDate = ?, Status = ?
     WHERE PaymentID = ?
   `;
 
   const values = [
     reservationID,
     userID,
-    username,
     amount,
     paymentMethod,
     paymentDate, 
