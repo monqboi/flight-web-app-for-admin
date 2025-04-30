@@ -20,10 +20,10 @@ router.get("/aircraft", (req, res) => {
 
 // Get a single Aircraft by ID
 router.get("/:id", (req, res) => {
-    const aircraftId = req.params.id;
+    const aircraftID = req.params.id;
     const query = "SELECT * FROM Aircraft WHERE AircraftID = ?";
   
-    db.query(query, [aircraftId], (err, result) => {
+    db.query(query, [aircraftID], (err, result) => {
       if (err) {
         console.error(err);
         return res.status(500).send("Error retrieving aircraft");

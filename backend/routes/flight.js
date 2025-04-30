@@ -67,7 +67,7 @@ router.get("/:id", (req, res) => {
 router.post("/", (req, res) => {
   try {
     const {
-      airlineId, // INTEGER: 1234
+      airlineID, // INTEGER: 1234
       departure, // VARCHAR(100): 'BKK'
       destination, // VARCHAR(100): 'USA'
       departureDate,    // '2025-05-15'
@@ -76,7 +76,7 @@ router.post("/", (req, res) => {
       arrivalTime,      // '07:00'
       stopOver,         // VARCHAR(100): 'JPN, KR'
       duration,         // INTEGER: 660
-      aircraftId,       // INTEGER: 1234
+      aircraftID,       // INTEGER: 1234
       status            // ENUM('Pending', 'Delayed', 'Completed', 'Canceled')
     } = req.body;
 
@@ -115,14 +115,14 @@ router.post("/", (req, res) => {
     `;
 
     const values = [
-      airlineId,
+      airlineID,
       departureUpper,
       destinationUpper,
       departureDateTime, // DATETIME: '2025-05-15 22:00'
       arrivalDateTime, // DATETIME: '2025-05-16 6:00'
       stopOver,
       duration,
-      aircraftId,
+      aircraftID,
       status,
     ];
 
@@ -133,7 +133,7 @@ router.post("/", (req, res) => {
       }
       res.status(201).json({
         message: "Flight created successfully", 
-        flightId: results.insertId 
+        flightID: results.insertId 
       }); 
     });
 
@@ -155,7 +155,7 @@ router.put("/:id", (req, res) => {
     arrivalTime,      
     stopOver,         
     duration,         
-    aircraftId,      
+    aircraftID,      
     status           
   } = req.body;
   
@@ -201,7 +201,7 @@ router.put("/:id", (req, res) => {
       arrivalDateTime,
       stopOver,
       duration,
-      aircraftId,
+      aircraftID,
       status,
       flightID
   ];

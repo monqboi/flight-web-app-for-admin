@@ -60,7 +60,6 @@ router.post("/", (req, res) => {
     paymentID,
     reservationID,
     userID,
-    username,
     amount,
     paymentMethod,
     paymentDate, 
@@ -72,7 +71,8 @@ router.post("/", (req, res) => {
       console.error(err);
       return res.status(500).send("Database error when creating payment");
     }
-    res.status(201).json({ message: "Payment created successfully" });
+    res.status(201).json({ message: "Payment created successfully",
+      paymentID});
   });
 });
 

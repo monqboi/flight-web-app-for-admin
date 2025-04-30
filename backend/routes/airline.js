@@ -16,14 +16,14 @@ router.get("/", (req, res) => {
       }
       res.json(results);
     });
-  });
+});
 
 // Get a single Airline by ID
 router.get("/:id", (req, res) => {
-  const airlineId = req.params.id;
+  const airlineID = req.params.id;
   const query = "SELECT * FROM Airline WHERE AirlineID = ?";
 
-  db.query(query, [airlineId], (err, result) => {
+  db.query(query, [airlineID], (err, result) => {
     if (err) {
       console.error(err);
       return res.status(500).send("Error retrieving airline");
@@ -38,7 +38,6 @@ router.get("/:id", (req, res) => {
 // Create a new Airline
 router.post("/", (req, res) => {
   const {
-    airlineId, // INTEGER: SG1234
     name, // 'Singapore Airlines'
     name_short, // VARCHAR(10): 'SIA'
     code, // VARCHAR(10): 'SG'
@@ -64,7 +63,7 @@ router.post("/", (req, res) => {
   //Check if airlineID already exists
   const checkQuery = "SELECT * FROM Airline WHERE AirlineID = ?";
 
-  db.query(checkQuery, [airlineId], (err, results) => {
+  db.query(checkQuery, [airlineID], (err, results) => {
     if (err) {
       console.error(err);
       return res.status(500).send("Error checking airline ID");
@@ -83,7 +82,7 @@ router.post("/", (req, res) => {
     `;
 
     const values = [
-      airlineId,
+      airlineID,
       name,
       name_shortUpper,
       codeUpper, 
@@ -103,14 +102,14 @@ router.post("/", (req, res) => {
       }
       res.status(201).json({
         message: "Airline added successfully",
-        airlineId });
+        airlineID });
     });
   });
 });
 
 // Update Airline Status ('Open', 'Temporarily closed')
 router.put("/:id/status", (req, res) => {
-  const airlineId = req.params.id;
+  const airlineID = req.params.id;
   const { airlineStatus } = req.body;
 
   // Ensure status sent is correct as the system supports.
@@ -125,7 +124,7 @@ router.put("/:id/status", (req, res) => {
     WHERE AirlineID = ?
   `;
 
-  db.query(query, [airlineStatus, airlineId], (err, results) => {
+  db.query(query, [airlineStatus, airlineID], (err, results) => {
     if (err) {
       console.error(err);
       return res.status(500).send("Database error when updating airline status");
