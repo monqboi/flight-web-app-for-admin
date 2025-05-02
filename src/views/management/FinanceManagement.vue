@@ -65,13 +65,11 @@
         <h3>{{ editingPayment ? 'Edit Payment' : 'Add Payment' }}</h3>
 
         <div class="form-row">
-          <input type="text" v-model="form.id" placeholder="Payment ID" :disabled="editingPayment" />
           <input type="text" v-model="form.reservationId" placeholder="Reservation ID" />
         </div>
 
         <div class="form-row">
-          <input type="text" v-model="form.userId" placeholder="User ID" />
-          <input type="date" v-model="form.date" />
+          <input type="datetime-local" v-model="form.date" />
         </div>
 
         <div class="form-row">
@@ -132,13 +130,13 @@ const payments = reactive([
   { id: 'PMT-002', reservationId: 'RSV-2023102', userId: 'USR002', username: 'jaturon93', route: 'DMK → CNX', date: '2024-04-04', amount: 3200, status: 'Success' }
 ]);
 
-const form = reactive({   id: '', 
-  reservationId: '', 
-  userId: '', 
-  date: '', 
-  amount: null, 
+const form =  reactive({
+  reservationId: '',
+  date: '',
+  amount: null,
   status: 'Pending',
-  method: '' });
+  method: '',
+});
 
 const filteredPayments = computed(() => {
   return payments.filter(p => {
@@ -165,9 +163,7 @@ function openModal(payment = null) {
     Object.assign(form, payment);
   } else {
     Object.assign(form, {
-      id: '', 
-      reservationId: '', 
-      userId: '', 
+      reservationId: '',
       date: '', 
       amount: null, 
       status: 'Pending',
@@ -205,7 +201,7 @@ function savePayment() {
 }
 
 function discardPayment() {
-  Object.assign(form, { id: '', reservationId: '', userId: '', username: '', route: '', date: '', amount: null, status: 'Pending' });
+  Object.assign(form, {  reservationId: '', username: '', route: '', date: '', amount: null, status: 'Pending' });
   showAddModal.value = false;
   editingPayment.value = false;
 }

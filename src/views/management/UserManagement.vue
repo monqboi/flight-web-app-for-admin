@@ -93,7 +93,6 @@
           </label>
         </div>
         <div class="form-row">
-          <input type="text" v-model="newUser.id" placeholder="User ID" />
           <input type="email" v-model="newUser.email" placeholder="Email" />
           <input type="text" v-model="newUser.phone" placeholder="Phone" />
         </div>
@@ -158,7 +157,7 @@ const totalPages = computed(() => {
 });
 
 
-const newUser = reactive({  id: '', profile: '', firstname: '', middlename: '', lastname: '', email: '', phone: '', passport: '', username: '', password: '', status: 'Active' });
+const newUser = reactive({  profile: '', firstname: '', middlename: '', lastname: '', email: '', phone: '', passport: '', username: '', password: '', status: 'Active' });
 
 let editUser = reactive(null);
 
@@ -180,16 +179,9 @@ const sortedUsers = computed(() => {
 function addUser() {
   if (!newUser.firstname || !newUser.email) return alert('Please fill required fields');
 
-  const duplicate = users.find(u => u.id == newUser.id);
-  if (duplicate) {
-    alert('User ID already exists!');
-    return;
-  }
-
-  users.push({ ...newUser });
+  users.push({ id: Date.now(), ...newUser }); // ชั่วคราว
 
   Object.assign(newUser, {
-    id: '',
     profile: '',
     firstname: '', middlename: '', lastname: '',
     email: '', phone: '', passport: '',
@@ -228,7 +220,6 @@ function deleteUser(id) {
 }
 function discardAddUser() {
   Object.assign(newUser, {
-    id: '',
     profile: '',
     firstname: '', middlename: '', lastname: '',
     email: '', phone: '', passport: '',

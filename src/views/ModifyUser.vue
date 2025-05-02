@@ -30,12 +30,6 @@
             <font-awesome-icon :icon="getIconName(field.icon)" />
             <input v-model="user[field.key]" :placeholder="field.label" />
           </div>
-          <div class="field-row">
-            <font-awesome-icon icon="flag" />
-            <input v-model="user.nationality" placeholder="Nationality" />
-            <font-awesome-icon icon="calendar-alt" />
-            <input type="date" v-model="user.birthdate" />
-          </div>
         </div>
       </section>
 
@@ -118,9 +112,8 @@ const editableFields = [
   { key: 'firstname', label: 'First name', icon: 'user-tag' },
   { key: 'middlename', label: 'Middle name', icon: 'user-tag' },
   { key: 'lastname', label: 'Last name', icon: 'user-tag' },
-  { key: 'address', label: 'Address', icon: 'map-marker-alt' },
   { key: 'email', label: 'Email', icon: 'envelope' },
-  { key: 'phone', label: 'Phone', icon: 'phone' }
+  { key: 'phone', label: 'Phone', icon: 'phone' },
 ]
 
 const bookings = ref([
@@ -201,6 +194,7 @@ function onFileChange(e) {
 .badge.success { background-color: #4caf50; }
 .badge.failed  { background-color: #d32f2f; }
 .photo-wrapper {
+  top: 25px;
   position: relative;
   display: inline-block;
   width: 160px;
@@ -208,6 +202,7 @@ function onFileChange(e) {
 }
 
 .photo-wrapper img {
+  top: 25px;
   width: 100%;
   height: 100%;
   border-radius: 50%;
@@ -235,6 +230,22 @@ function onFileChange(e) {
   font-size: 14px;
   cursor: pointer;
   z-index: 1;
+}
+.user-details-panel {
+  /* เพิ่มสิ่งนี้ */
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+.modify-user-layout {
+  display: flex;
+  gap: 30px;
+  align-items: stretch; /* ✅ new */
+}
+.field-row input {
+  font-size: 14px;
+  padding: 10px 12px;
 }
 
 </style>

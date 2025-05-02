@@ -51,10 +51,8 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(p, index) in filtered" :key="p.id" class="ticket-row">
-                <td>{{ p.username }}
-                  <span class="small-id">#{{ p.userId }}</span>
-                </td>
+              <tr v-for="(p, index) in filtered" :key="p.passengerId" class="ticket-row">
+                <td>{{ p.username }}<br><span class="small-id">#{{ p.userId }}</span></td>
                 <td>{{ p.seat }}</td>
                 <td>{{ p.fullname }}</td>
                 <td>{{ p.nationality }}</td>
@@ -76,7 +74,6 @@
           <div class="modal-content user-form">
             <h3>{{ isEditing ? 'Modify Passenger' : 'Add Passenger' }}</h3>
             <div class="form-row">
-              <input v-model="form.userId" placeholder="User ID" />
               <input v-model="form.reservationId" placeholder="Reservation ID" />
               <input v-model="form.seat" placeholder="Seat ID" />
             </div>
@@ -89,7 +86,7 @@
   
             <div class="form-row">
               <input v-model="form.nationality" placeholder="Nationality" />
-              <input v-model="form.birth" placeholder="Birth Date" />
+              <input type="date" v-model="form.birth" />
               <input v-model="form.passport" placeholder="Passport Number" />
             </div>
   
@@ -184,9 +181,7 @@
       isEditing.value = false
       editingIndex.value = null
       form.value = {
-        id: Date.now(),
-        userId: '',
-        reservationId: '',
+        reservationId: '',     // ✅ ใช้เพื่อเชื่อมกับ user
         seat: '',
         firstName: '',
         middleName: '',
@@ -285,6 +280,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
+    z-index: 10;
   }
   
   .modal-content input,

@@ -29,7 +29,7 @@
             </div>
           </div>
           <div class="search-actions">
-            <input class="search-box" v-model="searchQuery" placeholder="🔍 Search Passenger" />
+            <input class="search-box" v-model="searchQuery" placeholder="🔍 Search User" />
             <button class="add-btn" @click="openModal()">+ Add</button>
           </div>
         </div>
@@ -40,9 +40,9 @@
             <thead>
               <tr>
                 <th class="spacer-col"></th>
-                <th>Reservation ID</th>
+                <th>User</th>
                 <th>Seat ID</th>
-                <th>Full Name</th>
+                <th>Amount</th>
                 <th>Payment ID</th>
                 <th>Booking Date</th>
                 <th>Status</th>
@@ -52,9 +52,9 @@
             </thead>
             <tbody>
               <tr class="ticket-row" v-for="(res, index) in filteredReservations" :key="res.id">
-                <td>{{ res.reservationId }}</td>
+                <td>{{ res.username }}<br><span class="small-id">#{{ res.userId }}</span></td>
                 <td>{{ res.seat }}</td>
-                <td>{{ res.name }}</td>
+                <td>{{ res.amount }}</td>
                 <td>{{ res.paymentId }}</td>
                 <td>{{ res.bookingDate }}</td>
                 <td>
@@ -86,21 +86,18 @@
           <div class="modal-content user-form">
             <h3>{{ editIndex !== null ? 'Edit Reservation' : 'Add Reservation' }}</h3>
             <div class="form-row">
-              <input v-model="form.reservationId" placeholder="Reservation ID" />
-              <input v-model="form.userId" placeholder="User ID" />
-              <input v-model="form.seat" placeholder="Seat ID" />
+              <input type="number" v-model="form.userId" placeholder="User ID" />
+              <input type="number" v-model="form.flightId" placeholder="Flight ID" />
             </div>
-            <div class="form-row">
-              <input v-model="form.name" placeholder="Full Name" />
-              <input v-model="form.paymentId" placeholder="Payment ID" />
-              <input type="date" v-model="form.bookingDate" placeholder="Booking Date" />
-            </div>
+
             <div class="form-row">
               <select v-model="form.status">
-                <option>Pending</option>
+                <option disabled value="">Select Status</option>
                 <option>Confirmed</option>
-                <option>Cancelled</option>
+                <option>Canceled</option>
+                <option>Completed</option>
               </select>
+              <input type="datetime-local" v-model="form.bookingDate" />
             </div>
             <div class="modal-actions">
               <button class="save-btn" @click="saveReservation">Save ✔</button>
@@ -123,28 +120,23 @@
   const showModal = ref(false)
   const editIndex = ref(null)
   const form = ref({
-    id: null,
-    reservationId: '',
     userId: '',
-    seat: '',
-    name: '',
-    paymentId: '',
-    bookingDate: '',
-    status: 'Pending'
+    flightId: '',
+    status: '',
+    bookingDate: ''
   })
   
   const reservations = ref([
-    { id: 1, reservationId: 'R001', seat: '01A', name: 'John Doe', paymentId: 'P1001', bookingDate: '2025-03-09', status: 'Confirmed' },
-    { id: 2, reservationId: 'R002', seat: '02B', name: 'Jane Smith', paymentId: 'P1002', bookingDate: '2025-03-09', status: 'Pending' },
-    { id: 3, reservationId: 'R003', seat: '03C', name: 'Alice Brown', paymentId: 'P1003', bookingDate: '2025-03-09', status: 'Cancelled' }
+    { username: 'inwza241', userId: 'USR001', seat: '01A', amount: 5000, paymentId: 'P1001', bookingDate: '2025-03-09', status: 'Confirmed' },
+    { username: 'inwza241', userId: 'USR002', seat: '02B', amount: 5000, paymentId: 'P1002', bookingDate: '2025-03-09', status: 'Pending' },
+    { username: 'inwza241',userId: 'USR003', seat: '03C', amount: 5000, paymentId: 'P1003', bookingDate: '2025-03-09', status: 'Cancelled' }
   ])
   
   const filteredReservations = computed(() => {
     const q = searchQuery.value.toLowerCase()
     return reservations.value.filter(r =>
-      r.reservationId.toLowerCase().includes(q) ||
-      r.name.toLowerCase().includes(q) ||
-      r.seat.includes(q)
+    r.userId.toString().includes(q) ||
+    r.status.toLowerCase().includes(q)
     )
   })
   
@@ -166,6 +158,10 @@
   }
   
   function saveReservation() {
+    if (!form.value.userId || !form.value.flightId || !form.value.status || !form.value.bookingDate) {
+      alert("Please fill in all fields.")
+      return
+    }
     if (editIndex.value !== null) {
       reservations.value.splice(editIndex.value, 1, { ...form.value })
     } else {
