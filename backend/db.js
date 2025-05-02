@@ -1,20 +1,11 @@
-import mysql from 'mysql';
+import mysql from 'mysql2';
 
-// Create connection to database
-const db = mysql.createConnection({
-  host: 'localhost',
-  user: 'root',
-  password: 'password', 
-  database: 'flight_management', 
-});
-
-// Connect to MySQL
-db.connect((err) => {
-  if (err) {
-    console.error('Database connection failed: ', err.stack);
-    return;
-  }
-  console.log('Connected to MySQL database');
-});
-
-export default db;
+export default function getDBConnection() {
+  return mysql.createConnection({
+    host: '8.tcp.ngrok.io',
+    port: 18371,
+    user: 'noboyhereadmin1',
+    password: 'noboyhere888@admin1',
+    database: 'FlightDB',
+  });
+}

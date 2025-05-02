@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import db from "../db.js";
-
+import db from "./db.js";
 import airlineRouter from "./routes/airline.js";
 import flightRouter from "./routes/flight.js";
 import reservationRouter from "./routes/reservation.js";
@@ -9,7 +8,7 @@ import aircraftRouter from "./routes/aircraft.js";
 import paymentRouter from "./routes/payment.js";
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = 3000;
 
 // Middleware
 app.use(cors());
@@ -21,15 +20,13 @@ app.get('/', (req, res) => {
 });
 
 // Use routers
-app.use("/airline", airlineRouter);  
-app.use("/flight", flightRouter);  
-app.use("/aircraft", aircraftRouter);  
-app.use("/reservation", reservationRouter);  
-app.use("/payment", paymentRouter);  
-
+app.use("/api/airline", airlineRouter);
+app.use("/api/flight", flightRouter);
+app.use("/api/aircraft", aircraftRouter);
+app.use("/api/reservation", reservationRouter);
+app.use("/api/payment", paymentRouter);
 
 // Start server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
-

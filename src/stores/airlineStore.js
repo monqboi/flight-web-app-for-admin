@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { airlineData } from "@/data/management-airline.js";
+import axios from "axios";
 
 export const useAirlineStore = defineStore("airline", {
   state: () => ({
@@ -14,9 +14,7 @@ export const useAirlineStore = defineStore("airline", {
         return state.airlines;
       }
       return state.airlines.filter((airline) =>
-        airline.airlineID
-          .toLowerCase()
-          .includes(state.searchQuery.toLowerCase())
+        airline.airlineID.toString().toLowerCase().includes(state.searchQuery.toLowerCase())
       );
     },
     getAirlineByID: (state) => (airlineID) => {
@@ -25,29 +23,50 @@ export const useAirlineStore = defineStore("airline", {
   },
 
   actions: {
-    loadAirlines() {
-      this.airlines = airlineData;
-    },
-    addAirline(airline) {
-      this.airlines.push(airline);
-    },
-    setSearchQuery(query) {
-      const trimmedQuery = query.trim().toLowerCase();
-      this.searchQuery = trimmedQuery;
-    },
-    updateAirlineStatus(airlineID, status) {
-      const index = this.airlines.findIndex(
-        (flight) => flight.airlineID === airlineID
-      );
-      if (index !== -1) {
-        const updated = {
-          ...this.airlines[index],
-          airlineStatus: status,
-        };
-
-        this.airlines.splice(index, 1, updated);
+    // Load Airline from backend
+    async loadAirlines() {
+      try {
+        const res = await axios.get("/api/airline");
+        this.airlines = res.data;
+      } catch (err) {
+        console.error("Failed to load airlines:", err);
       }
-      console.log(this.airlines[index]);
+    },
+
+    // Add Airline to backend
+    async addAirline(airline) {
+      try {
+        await axios.post("/api/airline", airline);
+        await this.loadAirlines(); // reload after add
+      } catch (err) {
+        console.error("Failed to add airline:", err);
+      }
+    },
+
+    // Update Airline Status to backend
+    async updateAirlineStatus(airlineID, status) {
+      try {
+        await axios.put(`/api/airline/${airlineID}/status`, {
+          airlineStatus: status,
+        });
+        await this.loadAirlines(); // reload after update
+      } catch (err) {
+        console.error("Failed to update status:", err);
+      }
+    },
+
+    // Delete Airline from backend
+    async deleteAirline(airlineID) {
+      try {
+        await axios.delete(`/api/airline/${airlineID}`);
+        await this.loadAirlines();
+      } catch (err) {
+        console.error("Failed to delete airline:", err);
+      }
+    },
+
+    setSearchQuery(query) {
+      this.searchQuery = query.trim().toLowerCase();
     },
   },
 });

@@ -1,5 +1,5 @@
 import express from "express";
-import db from "../db.js";
+import getDBConnection from "../db.js";
 
 const router = express.Router();
 
@@ -7,23 +7,27 @@ const router = express.Router();
 
 // Get all Airlines
 router.get("/", (req, res) => {
-    const query = "SELECT * FROM Airline";
-  
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error retrieving airlines");
-      }
-      res.json(results);
-    });
+  const db = getDBConnection();
+  const query = "SELECT * FROM Airline";
+
+  db.query(query, (err, results) => {
+    db.end(); // Close connection everytime to prevent Connection lost
+    if (err) {
+      console.error(err);
+      return res.status(500).send("Error retrieving airlines");
+    }
+    res.json(results);
+  });
 });
 
 // Get a single Airline by ID
 router.get("/:id", (req, res) => {
+  const db = getDBConnection();
   const airlineID = req.params.id;
   const query = "SELECT * FROM Airline WHERE AirlineID = ?";
 
   db.query(query, [airlineID], (err, result) => {
+    db.end();
     if (err) {
       console.error(err);
       return res.status(500).send("Error retrieving airline");
@@ -37,6 +41,8 @@ router.get("/:id", (req, res) => {
 
 // Create a new Airline
 router.post("/", (req, res) => {
+  const db = getDBConnection();
+  console.log("Incoming airline payload:", req.body);
   const {
     name, // 'Singapore Airlines'
     name_short, // VARCHAR(10): 'SIA'
@@ -60,55 +66,41 @@ router.post("/", (req, res) => {
   //  return res.status(400).send("Invalid status value.");
   //}
 
-  //Check if airlineID already exists
-  const checkQuery = "SELECT * FROM Airline WHERE AirlineID = ?";
+  const insertQuery = `
+    INSERT INTO Airline 
+    (Name, AirlineNameShort, Code, ContactPrefix, ContactNumber, Country, Headquarters, AirlineStatus, AirlineColor, AirlineLogo)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
 
-  db.query(checkQuery, [airlineID], (err, results) => {
+  const values = [
+    name,
+    name_shortUpper,
+    codeUpper, 
+    contactPrefix, 
+    contactNumber, 
+    country, 
+    headquarters, 
+    airlineStatus, 
+    airlineColor, 
+    airlineImage 
+  ];
+
+  db.query(insertQuery, values, (err, results) => {
+    db.end();
     if (err) {
       console.error(err);
-      return res.status(500).send("Error checking airline ID");
+      return res.status(500).send("Error adding new airline");
     }
-
-    if (results.length > 0) {
-      // If airlineID exists, return an error
-      return res.status(400).send("Airline ID already exists");
-    }
-
-    // If airlineID doesn't exist, proceed with insertion
-    const insertQuery = `
-      INSERT INTO Airline 
-      (AirlineID, Name, AirlineNameShort, Code, ContactPrefix, ContactNumber, Country, Headquarters, AirlineStatus, AirlineColor, AirlineLogo)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-
-    const values = [
-      airlineID,
-      name,
-      name_shortUpper,
-      codeUpper, 
-      contactPrefix, 
-      contactNumber, 
-      country, 
-      headquarters, 
-      airlineStatus, 
-      airlineColor, 
-      airlineImage 
-    ];
-
-    db.query(insertQuery, values, (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error adding new airline");
-      }
-      res.status(201).json({
-        message: "Airline added successfully",
-        airlineID });
-    });
+    console.log("Insert result:", results); 
+    res.status(201).json({
+      message: "Airline added successfully",
+      airlineID: results.insertId });
   });
 });
 
 // Update Airline Status ('Open', 'Temporarily closed')
 router.put("/:id/status", (req, res) => {
+  const db = getDBConnection();
   const airlineID = req.params.id;
   const { airlineStatus } = req.body;
 
@@ -125,6 +117,7 @@ router.put("/:id/status", (req, res) => {
   `;
 
   db.query(query, [airlineStatus, airlineID], (err, results) => {
+    db.end();
     if (err) {
       console.error(err);
       return res.status(500).send("Database error when updating airline status");

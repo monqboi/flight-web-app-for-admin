@@ -20,17 +20,12 @@ defineProps({
 const confirmMode = ref("");
 
 const statusOptions = [
-  { value: "open", label: "Open", class: "open" },
-  {
-    value: "temporarily-closed",
-    label: "Temporarily closed",
-    class: "temporarily-closed",
-  },
+  { value: "Open", label: "Open", class: "open" },
+  { value: "Temporarily closed",label: "Temporarily closed", class: "temporarily-closed" },
 ];
 
 // form data
 const form = ref({
-  airlineID: "",
   name: "",
   name_short: "",
   code: "",
@@ -46,7 +41,6 @@ const form = ref({
 const isFormValid = computed(() => {
   const f = form.value;
   return (
-    f.airlineID &&
     f.name &&
     f.name_short &&
     f.code &&
@@ -217,10 +211,9 @@ onBeforeUnmount(() => {
               <div class="profile-pic-wrapper">
                 <div class="pic-container">
                   <div
-                    ref="imagePreviewRef"
-                    class="pic-image"
-                    :style="`background-image: url(${form.airlineImage})`"
-                  ></div>
+                      class="pic-image"
+                      :style="{ backgroundImage: 'url(' + form.airlineImage + ')' }"
+                    ></div>
                 </div>
                 <div class="pic-edit" @click="openUploadImageAirline">
                   <svg
@@ -255,7 +248,6 @@ onBeforeUnmount(() => {
                     align-items: center;
                   "
                 >
-                  <label>Airline ID</label>
                   <label>Airline Name</label>
                   <label>Code</label>
                 </div>
@@ -268,11 +260,6 @@ onBeforeUnmount(() => {
                     align-items: center;
                   "
                 >
-                  <input
-                    type="text"
-                    placeholder="- - - - - "
-                    v-model="form.airlineID"
-                  />
                   <input
                     type="text"
                     placeholder="Enter Airline Name"

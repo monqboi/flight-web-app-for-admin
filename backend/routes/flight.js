@@ -1,6 +1,6 @@
 import express from "express";
 import db from "../db.js";
-import combineDateTime from "./utils/combineDateTime.js";
+import combineDateTime from '../utils/combineDateTime.js';
 
 const router = express.Router();
 
