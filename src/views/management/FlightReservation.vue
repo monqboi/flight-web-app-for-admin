@@ -41,7 +41,7 @@
               <tr>
                 <th class="spacer-col"></th>
                 <th>User</th>
-                <th>Seat ID</th>
+                <th>Seat Number</th>
                 <th>Amount</th>
                 <th>Payment ID</th>
                 <th>Booking Date</th>
