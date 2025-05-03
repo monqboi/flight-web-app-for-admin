@@ -261,7 +261,6 @@ watch(
   (newStopCount) => {
     const stopCount = parseInt(newStopCount, 10);
     if (!isNaN(stopCount)) {
-      // Adjust the stopOvers array to match the selected number of stops
       form.value.stopOvers = Array.from({ length: stopCount }, () => "");
     }
   }
@@ -439,7 +438,7 @@ watch(
                 </div>
               </div>
 
-              <div>
+              <div v-if="parseInt(form.duration.stop) > 0">
                 <div class="form-row">
                   <label>Stop Over</label>
                 </div>
