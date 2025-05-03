@@ -1,19 +1,33 @@
 <script setup>
-import { ref, defineProps, defineEmits, computed, onBeforeUnmount } from "vue";
+import {
+  ref,
+  defineProps,
+  defineEmits,
+  computed,
+  watch,
+  onBeforeUnmount,
+} from "vue";
 import ModalConfirm from "../ModalConfirm.vue";
 import Dropdown from "@/components/Dropdown.vue";
+import { useAirlineStore } from "@/stores/airlineStore";
 
-const emit = defineEmits(["addAirline", "close"]);
+const airlineStore = useAirlineStore();
+
+const emit = defineEmits(["close"]);
 const isShowConfirmModal = ref(false);
 
 const showConfirmAddFlight = () => {
   isShowConfirmModal.value = true;
 };
 
-defineProps({
+const { isShowModalAddAirline, airlineID } = defineProps({
   isShowModalAddAirline: {
     type: Boolean,
     default: false,
+  },
+  airlineID: {
+    type: String,
+    default: null,
   },
 });
 
@@ -72,8 +86,7 @@ const discardAddAirline = () => {
 };
 
 const addAirline = () => {
-  const airlineData = { ...form.value };
-  emit("addAirline", airlineData);
+  airlineStore.addAirline({ ...form.value });
   closeModal();
 };
 
@@ -132,6 +145,32 @@ const handleImageUpload = (event) => {
 
 onBeforeUnmount(() => {
   uploadInputRef.value = null;
+});
+
+const modalTitle = computed(() =>
+  airlineID && airlineID.trim() !== ""
+    ? "Edit Airline Details"
+    : "Add Airline Details"
+);
+
+watch(
+  () => airlineID,
+  (newAirlineID) => {
+    if (newAirlineID) {
+      const selectedAirline = airlineStore.getAirlineByID(newAirlineID);
+      if (selectedAirline) {
+        form.value = { ...selectedAirline };
+      }
+    } else {
+      // resetForm();
+    }
+  },
+  { immediate: true }
+);
+
+const selecedtedAirline = computed(() => {
+  console.log("selecedtedAirline", airlineStore.getAirlineByID(airlineID));
+  return airlineStore.getAirlineByID(airlineID);
 });
 </script>
 
@@ -196,7 +235,7 @@ onBeforeUnmount(() => {
                   </svg>
                 </div>
               </div>
-              <h2>Add Airline Details</h2>
+              <h2>{{ modalTitle }}</h2>
               <Dropdown
                 v-model="form.airlineStatus"
                 :statusOptions="statusOptions"
@@ -250,12 +289,11 @@ onBeforeUnmount(() => {
                 <div
                   class="form-row"
                   style="
-                    grid-template-columns: 0.5fr 1fr 1fr;
+                    grid-template-columns: 1fr 1fr;
                     gap: 20px;
                     align-items: center;
                   "
                 >
-                  <label>Airline ID</label>
                   <label>Airline Name</label>
                   <label>Code</label>
                 </div>
@@ -263,16 +301,11 @@ onBeforeUnmount(() => {
                 <div
                   class="form-row inputs"
                   style="
-                    grid-template-columns: 0.5fr 1fr 1fr;
+                    grid-template-columns: 1fr 1fr;
                     gap: 20px;
                     align-items: center;
                   "
                 >
-                  <input
-                    type="text"
-                    placeholder="- - - - - "
-                    v-model="form.airlineID"
-                  />
                   <input
                     type="text"
                     placeholder="Enter Airline Name"
@@ -321,12 +354,11 @@ onBeforeUnmount(() => {
                 <div
                   class="form-row"
                   style="
-                    grid-template-columns: 0.8fr 1fr 2fr;
+                    grid-template-columns: 1fr 2fr;
                     gap: 20px;
                     align-items: center;
                   "
                 >
-                  <label>Name Short</label>
                   <label>Airline Color</label>
                   <label>Headquarters</label>
                 </div>
@@ -334,16 +366,11 @@ onBeforeUnmount(() => {
                 <div
                   class="form-row inputs"
                   style="
-                    grid-template-columns: 0.8fr 1fr 2fr;
+                    grid-template-columns: 1fr 2fr;
                     gap: 20px;
                     align-items: center;
                   "
                 >
-                  <input
-                    type="text"
-                    placeholder="- - -"
-                    v-model="form.name_short"
-                  />
                   <input
                     type="color"
                     v-model="form.airlineColor"
