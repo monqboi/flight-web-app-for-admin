@@ -7,6 +7,7 @@ import { onMounted, ref } from "vue";
 const airlineStore = useAirlineStore();
 const router = useRouter();
 const isShowModalAddAirline = ref(false);
+const selectedAirline = ref(null);
 
 onMounted(() => {
   airlineStore.loadAirlines();
@@ -14,12 +15,21 @@ onMounted(() => {
 });
 
 const addAirline = (newAirline) => {
-  airlineStore.addAirline(newAirline);
-  isShowModalAddAirline.value = false;
+  isShowModalAddAirline.value = true;
+};
+
+const editAirline = (id) => {
+  selectedAirline.value = id;
+  isShowModalAddAirline.value = true;
 };
 
 const showModalAddAirline = () => {
   isShowModalAddAirline.value = true;
+};
+
+const closeModalAddAirline = () => {
+  isShowModalAddAirline.value = false;
+  selectedAirline.value = null;
 };
 
 const handleSearch = (event) => {
@@ -86,6 +96,12 @@ const handleSearch = (event) => {
             <h3>{{ airline.name }}</h3>
             <p>#{{ airline.airlineID }}</p>
           </div>
+          <div
+            class="airline-edit-button"
+            @click="editAirline(airline.airlineID)"
+          >
+            <font-awesome-icon icon="edit" />
+          </div>
         </div>
 
         <div class="card-section status-section" style="grid-area: status">
@@ -111,7 +127,7 @@ const handleSearch = (event) => {
           <div class="info-grid">
             <div class="info-item">
               <p class="info-label">Name</p>
-              <p class="info-value">{{ airline.name_short }}</p>
+              <p class="info-value">{{ airline.name }}</p>
             </div>
             <div class="info-item">
               <p class="info-label">Code</p>
@@ -158,9 +174,10 @@ const handleSearch = (event) => {
   </div>
   <ModalAddAirline
     :isShowModalAddAirline="isShowModalAddAirline"
-    @close="isShowModalAddAirline = false"
-    @addAirline="addAirline"
-  ></ModalAddAirline>
+    :airlineID="selectedAirline"
+    :formMode="selectedAirline ? 'edit' : 'add'"
+    @close="closeModalAddAirline"
+  />
 </template>
 
 <style scoped>
@@ -236,6 +253,14 @@ const handleSearch = (event) => {
   align-items: center;
   height: 60px;
   color: white;
+
+  .airline-edit-button {
+    margin-left: 10px;
+    margin-top: 10px;
+    height: 100%;
+    cursor: pointer;
+    color: white;
+  }
 }
 
 .status-section {

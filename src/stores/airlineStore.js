@@ -29,7 +29,16 @@ export const useAirlineStore = defineStore("airline", {
       this.airlines = airlineData;
     },
     addAirline(airline) {
-      this.airlines.push(airline);
+      const randomID = `AL-${Math.random().toString(36).substr(2, 9)}`;
+      this.airlines.push({ airlineID: randomID, ...airline });
+    },
+    updateAirline(airlineID, updatedAirline) {
+      const index = this.airlines.findIndex(
+        (airline) => airline.airlineID === airlineID
+      );
+      if (index !== -1) {
+        this.airlines[index] = { ...this.airlines[index], ...updatedAirline };
+      }
     },
     setSearchQuery(query) {
       const trimmedQuery = query.trim().toLowerCase();

@@ -1,14 +1,18 @@
 <script setup>
-import { ref, defineProps, defineEmits, watch } from "vue";
+import { ref, defineProps, defineEmits, computed, watch } from "vue";
 import { useAircraftStore } from "@/stores/aircraftStore";
 import { useAirlineStore } from "@/stores/airlineStore";
 import { onMounted } from "vue";
+import { object, string, number } from "zod";
 
+import ModalConfirm from "../ModalConfirm.vue";
 import Dropdown from "../Dropdown.vue";
 
 const emit = defineEmits(["close"]);
 const aircraftStore = useAircraftStore();
 const airlineStore = useAirlineStore();
+const showConfirmModal = ref(false);
+const confirmMode = ref("");
 
 const props = defineProps({
   showAircraft: {
@@ -16,6 +20,10 @@ const props = defineProps({
     default: false,
   },
   aircraftID: {
+    type: String,
+    default: "",
+  },
+  formMode: {
     type: String,
     default: "",
   },
@@ -30,6 +38,15 @@ const statusOptions = [
   { value: "available", label: "Available", class: "available" },
   { value: "not-available", label: "Not Available", class: "not-available" },
 ];
+
+const formSchema = object({
+  airline: string().min(1, "Airline is required"),
+  aircraftID: string().min(1, "Aircraft ID is required"),
+  capacity: number().min(1, "Capacity is required"),
+  model: string().min(1, "Model is required"),
+  registrationNumber: string().min(1, "Registration Number is required"),
+  aircraftStatus: string().min(1, "Aircraft Status is required"),
+});
 
 const form = ref({
   airline: "",
@@ -65,20 +82,57 @@ watch(
   { immediate: true }
 );
 
-const isFormChanged = () => {
-  const currentAircraft = aircraftStore.getAircraftByID(form.value.aircraftID);
-  return form.value.aircraftStatus !== currentAircraft?.aircraftStatus;
-};
+const isFormValid = computed(() => {
+  const result = formSchema.safeParse(form.value);
+  return result.success;
+});
 
 const handleClose = () => {
-  if (isFormChanged()) {
-    aircraftStore.updateAircraftStatus(
-      form.value.aircraftID,
-      form.value.aircraftStatus
-    );
+  confirmMode.value = "discard";
+  showConfirmModal.value = true;
+};
+
+const confirmAddAircraft = () => {
+  if (isFormValid.value) {
+    confirmMode.value = "success";
+    showConfirmModal.value = true;
   }
+};
+
+const addAircraft = () => {
+  if (props.formMode === "add") {
+    aircraftStore.addAircraft(form.value);
+  } else if (props.formMode === "edit") {
+    aircraftStore.updateAircraft(form.value);
+  }
+  showConfirmModal.value = false;
   emit("close");
 };
+
+const closeModal = () => {
+  showConfirmModal.value = false;
+  emit("close");
+};
+
+const confirmText = computed(() => {
+  if (props.formMode === "add") {
+    return confirmMode.value === "success"
+      ? "Are you sure you want to add this flight?"
+      : "Are you sure you want to discard this flight?";
+  } else if (props.formMode === "edit") {
+    return confirmMode.value === "success"
+      ? "Are you sure you want to edit this flight?"
+      : "Are you sure you want to discard this flight?";
+  }
+  return "";
+});
+
+watch(
+  () => showConfirmModal.value,
+  (newValue) => {
+    console.log("showConfirmModal", newValue);
+  }
+);
 </script>
 
 <template>
@@ -89,6 +143,28 @@ const handleClose = () => {
           <div class="modal-add-flight">
             <div class="modal-header">
               <div class="modal-action">
+                <div
+                  @click="isFormValid ? confirmAddAircraft() : null"
+                  :class="{ disabled: !isFormValid }"
+                  class="check-button"
+                >
+                  <!-- Confirm Button SVG -->
+                  <svg width="30" height="30" viewBox="0 0 30 30" fill="none">
+                    <rect
+                      x="0.5"
+                      y="0.5"
+                      width="29"
+                      height="29"
+                      rx="4.5"
+                      fill="#FFB042"
+                      stroke="#FFB042"
+                    />
+                    <path
+                      d="M24.6174 8.40514C24.4913 8.27676 24.3414 8.17487 24.1762 8.10534C24.011 8.0358 23.8338 8 23.6548 8C23.4758 8 23.2986 8.0358 23.1334 8.10534C22.9682 8.17487 22.8182 8.27676 22.6922 8.40514L12.5917 18.6227L8.3481 14.322C8.21723 14.1943 8.06276 14.0939 7.89348 14.0265C7.7242 13.9591 7.54345 13.9261 7.36153 13.9293C7.17961 13.9324 7.00009 13.9718 6.83323 14.045C6.66636 14.1183 6.51541 14.2241 6.389 14.3563C6.26259 14.4885 6.16319 14.6445 6.09648 14.8155C6.02978 14.9865 5.99706 15.1691 6.00021 15.3529C6.00335 15.5367 6.0423 15.7181 6.11483 15.8866C6.18735 16.0552 6.29203 16.2077 6.4229 16.3354L11.6291 21.5949C11.7551 21.7232 11.9051 21.8251 12.0703 21.8947C12.2355 21.9642 12.4127 22 12.5917 22C12.7706 22 12.9479 21.9642 13.1131 21.8947C13.2783 21.8251 13.4282 21.7232 13.5543 21.5949L24.6174 10.4185C24.755 10.2903 24.8648 10.1346 24.94 9.96134C25.0151 9.78808 25.0539 9.60098 25.0539 9.41183C25.0539 9.22268 25.0151 9.03558 24.94 8.86232C24.8648 8.68906 24.755 8.5334 24.6174 8.40514Z"
+                      fill="white"
+                    />
+                  </svg>
+                </div>
                 <div class="check-button" @click="handleClose">
                   <svg
                     width="30"
@@ -115,7 +191,7 @@ const handleClose = () => {
                   </svg>
                 </div>
               </div>
-              <h2>{{ form.model || "No Model" }}</h2>
+              <h2>{{ form.model || "New Model" }}</h2>
               <Dropdown
                 v-model="form.aircraftStatus"
                 :statusOptions="statusOptions"
@@ -132,16 +208,30 @@ const handleClose = () => {
             </div>
 
             <div class="form-container">
-              <div class="form-row">
+              <div
+                class="form-row"
+                style="
+                  grid-template-columns: 1fr 2fr;
+                  gap: 20px;
+                  align-items: center;
+                "
+              >
                 <label>Airline</label>
                 <label>AircraftID</label>
                 <label>Capacity</label>
               </div>
 
-              <div class="form-row inputs">
-                <input type="text" v-model="form.airline" disabled />
-                <input type="text" v-model="form.aircraftID" disabled />
-                <input type="number" v-model="form.capacity" disabled />
+              <div
+                class="form-row inputs"
+                style="
+                  grid-template-columns: 1fr 2fr;
+                  gap: 20px;
+                  align-items: center;
+                "
+              >
+                <input type="text" v-model="form.airline" />
+                <input type="text" v-model="form.aircraftID" />
+                <input type="number" v-model="form.capacity" />
               </div>
 
               <div
@@ -164,8 +254,8 @@ const handleClose = () => {
                   align-items: center;
                 "
               >
-                <input type="text" v-model="form.model" disabled />
-                <input type="text" v-model="form.registrationNumber" disabled />
+                <input type="text" v-model="form.model" />
+                <input type="text" v-model="form.registrationNumber" />
               </div>
             </div>
           </div>
@@ -173,6 +263,32 @@ const handleClose = () => {
       </div>
     </div>
   </Transition>
+
+  <ModalConfirm
+    :confirmMode="confirmMode"
+    :formMode="formMode"
+    :isShowConfirmModal="showConfirmModal"
+    @closeConfirmModal="showConfirmModal = false"
+    @closeModal="closeModal"
+    @confirmModal="addAircraft"
+  >
+    <template #header>
+      {{
+        confirmMode === "success"
+          ? "Success Confirmation"
+          : "Discard Confirmation"
+      }}
+    </template>
+    <template #body>
+      <p>{{ confirmText }}</p>
+    </template>
+    <template #footer-summit>
+      <p>Yes</p>
+    </template>
+    <template #footer-cancel>
+      <div>Cancel</div>
+    </template>
+  </ModalConfirm>
 </template>
 
 <style scoped>
@@ -245,6 +361,11 @@ const handleClose = () => {
 .check-button,
 .close-button {
   cursor: pointer;
+}
+
+.check-button.disabled {
+  cursor: not-allowed;
+  filter: brightness(0.6);
 }
 
 .check-button:hover svg rect,
@@ -406,7 +527,6 @@ input {
   color: #5a6777;
   background-color: #f0f5fa;
   width: 100%;
-  cursor: not-allowed;
 }
 
 input::placeholder {
