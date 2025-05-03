@@ -7,6 +7,7 @@ import {
   watch,
   onBeforeUnmount,
 } from "vue";
+import { object, string } from "zod";
 import ModalConfirm from "../ModalConfirm.vue";
 import Dropdown from "@/components/Dropdown.vue";
 import { useAirlineStore } from "@/stores/airlineStore";
@@ -20,7 +21,7 @@ const showConfirmAddFlight = () => {
   isShowConfirmModal.value = true;
 };
 
-const { isShowModalAddAirline, airlineID } = defineProps({
+const { isShowModalAddAirline, airlineID, formMode } = defineProps({
   isShowModalAddAirline: {
     type: Boolean,
     default: false,
@@ -28,6 +29,10 @@ const { isShowModalAddAirline, airlineID } = defineProps({
   airlineID: {
     type: String,
     default: null,
+  },
+  formMode: {
+    type: String,
+    default: "",
   },
 });
 
@@ -42,11 +47,28 @@ const statusOptions = [
   },
 ];
 
+const formSchema = object({
+  name: string()
+    .min(1, "Airline name is required")
+    .max(100, "Airline name must not exceed 100 characters"),
+  code: string()
+    .min(1, "Code is required")
+    .max(10, "Code must not exceed 10 characters"),
+  contactPrefix: string().min(1, "Contact prefix is required"),
+  contactNumber: string()
+    .min(11, "Contact number is invalid")
+  country: string()
+    .min(1, "Country is required")
+    .max(50, "Country must not exceed 50 characters"),
+  headquarters: string().min(1, "Headquarters is required"),
+  airlineImage: string().nullable().optional(),
+  airlineStatus: string().min(1, "Airline status is required"),
+  airlineColor: string().optional(),
+});
+
 // form data
 const form = ref({
-  airlineID: "",
   name: "",
-  name_short: "",
   code: "",
   contactPrefix: "",
   contactNumber: "",
@@ -58,19 +80,8 @@ const form = ref({
 });
 
 const isFormValid = computed(() => {
-  const f = form.value;
-  return (
-    f.airlineID &&
-    f.name &&
-    f.name_short &&
-    f.code &&
-    f.contactPrefix &&
-    f.contactNumber &&
-    f.country &&
-    f.headquarters &&
-    f.airlineImage &&
-    f.airlineStatus
-  );
+  const valid = formSchema.safeParse(form.value);
+  return valid.success;
 });
 
 const confirmAddAirline = () => {
@@ -86,7 +97,12 @@ const discardAddAirline = () => {
 };
 
 const addAirline = () => {
-  airlineStore.addAirline({ ...form.value });
+  if (formMode === "edit") {
+    airlineStore.updateAirline(airlineID, { ...form.value });
+  } else {
+    airlineStore.addAirline({ ...form.value });
+  }
+
   closeModal();
 };
 

@@ -127,7 +127,7 @@ const handleSearch = (event) => {
           <div class="info-grid">
             <div class="info-item">
               <p class="info-label">Name</p>
-              <p class="info-value">{{ airline.name_short }}</p>
+              <p class="info-value">{{ airline.name }}</p>
             </div>
             <div class="info-item">
               <p class="info-label">Code</p>
@@ -175,6 +175,7 @@ const handleSearch = (event) => {
   <ModalAddAirline
     :isShowModalAddAirline="isShowModalAddAirline"
     :airlineID="selectedAirline"
+    :formMode="selectedAirline ? 'edit' : 'add'"
     @close="closeModalAddAirline"
   />
 </template>

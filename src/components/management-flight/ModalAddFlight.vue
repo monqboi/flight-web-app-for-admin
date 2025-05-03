@@ -8,6 +8,9 @@ import {
   watch,
   watchEffect,
 } from "vue";
+
+import { object, string } from "zod";
+
 import ModalConfirm from "../ModalConfirm.vue";
 import { useAircraftStore } from "@/stores/aircraftStore";
 import { useFlightStore } from "@/stores/flightStore";
@@ -72,11 +75,60 @@ const statusOptions = [
   { value: "canceled", label: "Canceled", class: "canceled" },
 ];
 
+const formSchema = object({
+  departure: object({
+    airport: string()
+      .nonempty("Airport is required")
+      .max(3, "Airport code must be 3 characters"),
+    time: string().nonempty("Time is required"),
+    date: string().nonempty("Date is required"),
+  }),
+  destination: object({
+    airport: string()
+      .nonempty("Airport is required")
+      .max(3, "Airport code must be 3 characters"),
+    time: string().nonempty("Time is required"),
+    date: string().nonempty("Date is required"),
+  }),
+  duration: object({
+    time: string()
+      .nonempty("Duration time is required")
+      .refine((value) => parseInt(value, 10) > 0, {
+        message: "Duration time must be greater than 0",
+      }),
+    stop: string()
+      .nonempty("Stop count is required")
+      .refine((value) => parseInt(value, 10) > 0, {
+        message: "Stop count must be greater than 0",
+      }),
+  }),
+  aircraftID: string().nonempty("Aircraft ID is required"),
+  flightStatus: string().nonempty("Flight status is required"),
+})
+  .refine((data) => data.departure.airport !== data.destination.airport, {
+    message: "Departure and destination airports cannot be the same.",
+    path: ["destination", "airport"],
+  })
+  .refine(
+    (data) => {
+      const departureDateTime = new Date(
+        `${data.departure.date}T${data.departure.time}`
+      );
+      const destinationDateTime = new Date(
+        `${data.destination.date}T${data.destination.time}`
+      );
+      return destinationDateTime > departureDateTime;
+    },
+    {
+      message: "Arrival date and time must be after departure.",
+      path: ["destination", "date"], // Highlight the destination date field
+    }
+  );
+
 // form data
 const form = ref({
   flightID: null,
   airlineID: "",
-  isSeatAvailable: true,
   departure: {
     airport: "",
     time: "",
@@ -87,7 +139,6 @@ const form = ref({
     time: "",
     date: "",
   },
-  date: "",
   duration: {
     time: "",
     stop: "",
@@ -98,20 +149,18 @@ const form = ref({
 });
 
 const isFormValid = computed(() => {
-  const f = form.value;
-
-  return (
-    f.departure.airport &&
-    f.departure.date &&
-    f.departure.time &&
-    f.destination.airport &&
-    f.destination.date &&
-    f.destination.time &&
-    f.aircraftID &&
-    f.duration.stop !== "" &&
-    f.duration.time !== "" &&
-    f.flightStatus != ""
-  );
+  const result = formSchema.safeParse(form.value);
+  if (result.success) {
+    return true;
+  } else {
+    const errors = result.error.flatten();
+    for (const key in errors.fieldErrors) {
+      if (errors.fieldErrors[key].length > 0) {
+        return false;
+      }
+    }
+    return true;
+  }
 });
 
 const confirmText = computed(() => {
