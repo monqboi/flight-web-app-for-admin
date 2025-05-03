@@ -55,8 +55,7 @@ const formSchema = object({
     .min(1, "Code is required")
     .max(10, "Code must not exceed 10 characters"),
   contactPrefix: string().min(1, "Contact prefix is required"),
-  contactNumber: string()
-    .min(11, "Contact number is invalid")
+  contactNumber: string().min(10, "Contact number is invalid"),
   country: string()
     .min(1, "Country is required")
     .max(50, "Country must not exceed 50 characters"),

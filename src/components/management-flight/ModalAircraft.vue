@@ -3,6 +3,7 @@ import { ref, defineProps, defineEmits, computed, watch } from "vue";
 import { useAircraftStore } from "@/stores/aircraftStore";
 import { useAirlineStore } from "@/stores/airlineStore";
 import { onMounted } from "vue";
+import { object, string, number } from "zod";
 
 import ModalConfirm from "../ModalConfirm.vue";
 import Dropdown from "../Dropdown.vue";
@@ -38,6 +39,15 @@ const statusOptions = [
   { value: "not-available", label: "Not Available", class: "not-available" },
 ];
 
+const formSchema = object({
+  airline: string().min(1, "Airline is required"),
+  aircraftID: string().min(1, "Aircraft ID is required"),
+  capacity: number().min(1, "Capacity is required"),
+  model: string().min(1, "Model is required"),
+  registrationNumber: string().min(1, "Registration Number is required"),
+  aircraftStatus: string().min(1, "Aircraft Status is required"),
+});
+
 const form = ref({
   airline: "",
   aircraftID: "",
@@ -72,10 +82,10 @@ watch(
   { immediate: true }
 );
 
-const isFormChanged = () => {
-  const currentAircraft = aircraftStore.getAircraftByID(form.value.aircraftID);
-  return form.value.aircraftStatus !== currentAircraft?.aircraftStatus;
-};
+const isFormValid = computed(() => {
+  const result = formSchema.safeParse(form.value);
+  return result.success;
+});
 
 const handleClose = () => {
   confirmMode.value = "discard";
@@ -198,13 +208,27 @@ watch(
             </div>
 
             <div class="form-container">
-              <div class="form-row">
+              <div
+                class="form-row"
+                style="
+                  grid-template-columns: 1fr 2fr;
+                  gap: 20px;
+                  align-items: center;
+                "
+              >
                 <label>Airline</label>
                 <label>AircraftID</label>
                 <label>Capacity</label>
               </div>
 
-              <div class="form-row inputs">
+              <div
+                class="form-row inputs"
+                style="
+                  grid-template-columns: 1fr 2fr;
+                  gap: 20px;
+                  align-items: center;
+                "
+              >
                 <input type="text" v-model="form.airline" />
                 <input type="text" v-model="form.aircraftID" />
                 <input type="number" v-model="form.capacity" />
@@ -337,6 +361,11 @@ watch(
 .check-button,
 .close-button {
   cursor: pointer;
+}
+
+.check-button.disabled {
+  cursor: not-allowed;
+  filter: brightness(0.6);
 }
 
 .check-button:hover svg rect,
