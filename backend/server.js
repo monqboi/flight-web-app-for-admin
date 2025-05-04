@@ -6,6 +6,8 @@ import flightRouter from "./routes/flight.js";
 import reservationRouter from "./routes/reservation.js";
 import aircraftRouter from "./routes/aircraft.js";
 import paymentRouter from "./routes/payment.js";
+import passengerRoutes from "./routes/passenger.js";
+import dashboardRoutes from './routes/dashboard.js';
 
 const app = express();
 const port = 3000;
@@ -25,6 +27,8 @@ app.use("/api/flight", flightRouter);
 app.use("/api/aircraft", aircraftRouter);
 app.use("/api/reservation", reservationRouter);
 app.use("/api/payment", paymentRouter);
+app.use("/api/passenger", passengerRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Start server
 app.listen(port, () => {

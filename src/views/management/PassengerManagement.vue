@@ -1,176 +1,195 @@
 <template>
-    <div class="layout">
-      <Sidebar />
-      <main class="main-content">
-        <!-- HEADER SECTION -->
-        <div class="flight-header">
-          <button class="back-button" @click="goBack">←</button>
-          <div class="flight-date-info">
-            <span class="date">Mar 09, 2025</span>
-            <div class="flight-route">
-              <img src="/src/assets/plane-fly.png" />
-              <span class="airport">BKK</span>
-              <span class="time">18:00</span>
-              <img src="/src/assets/fly-duration.png" class="flight-arrow" />
-              <img src="/src/assets/plane-land.png" />
-              <span class="airport">CNX</span>
-              <span class="time">18:00</span>
-            </div>
-          </div>
-          <div class="flight-mode-toggle">
-            <label class="toggle-label">Flight view mode</label>
-            <div class="view-switch">
-              <span :class="{ active: !toggleView }">Passenger</span>
-              <label class="switch">
-                <input type="checkbox" v-model="toggleView" @change="switchView" />
-                <span class="slider round"></span>
-              </label>
-              <span :class="{ active: toggleView }">Reservation</span>
-            </div>
-          </div>
-          <div class="search-actions">
-            <input class="search-box" v-model="searchQuery" placeholder="🔍 Search Passenger" />
-            <button class="add-btn" @click="openModal()">+ Add</button>
+  <div class="layout">
+    <Sidebar />
+    <main class="main-content">
+      <!-- HEADER SECTION -->
+      <div class="flight-header">
+        <button class="back-button" @click="goBack">←</button>
+        <div class="flight-date-info">
+          <span class="date">Mar 09, 2025</span>
+          <div class="flight-route">
+            <img src="/src/assets/plane-fly.png" />
+            <span class="airport">BKK</span>
+            <span class="time">18:00</span>
+            <img src="/src/assets/fly-duration.png" class="flight-arrow" />
+            <img src="/src/assets/plane-land.png" />
+            <span class="airport">CNX</span>
+            <span class="time">18:00</span>
           </div>
         </div>
-  
-        <!-- TABLE -->
-        <div class="payment-table">
-          <table class="passenger-table">
-            <thead>
-              <tr>
-                <th class="spacer-col"></th>
-                <th>User</th>
-                <th>SeatID</th>
-                <th>Full Name</th>
-                <th>Nationality</th>
-                <th>Birth</th>
-                <th>Address</th>
-                <th>Action</th>
-                <th class="spacer-col"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(p, index) in filtered" :key="p.passengerId" class="ticket-row">
-                <td>{{ p.username }}<br><span class="small-id">#{{ p.userId }}</span></td>
-                <td>{{ p.seat }}</td>
-                <td>{{ p.fullname }}</td>
-                <td>{{ p.nationality }}</td>
-                <td>{{ p.birth }}</td>
-                <td>{{ p.address }}</td>
-                <td>
-                  <div class="action-buttons">
-                    <i class="fa fa-edit" @click="openModal(p, index)"></i>
-                    <font-awesome-icon icon="trash"  @click="deletePassenger(p.id)" />
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-  
-        <!-- MODAL -->
-        <div v-if="showModal" class="modal">
-          <div class="modal-content user-form">
-            <h3>{{ isEditing ? 'Modify Passenger' : 'Add Passenger' }}</h3>
-            <div class="form-row">
-              <input v-model="form.reservationId" placeholder="Reservation ID" />
-              <input v-model="form.seat" placeholder="Seat ID" />
-            </div>
-  
-            <div class="form-row">
-              <input v-model="form.firstName" placeholder="First Name" />
-              <input v-model="form.middleName" placeholder="Middle Name" />
-              <input v-model="form.lastName" placeholder="Last Name" />
-            </div>
-  
-            <div class="form-row">
-              <input v-model="form.nationality" placeholder="Nationality" />
-              <input type="date" v-model="form.birth" />
-              <input v-model="form.passport" placeholder="Passport Number" />
-            </div>
-  
-            <div class="form-row">
-              <input v-model="form.address" placeholder="Address" />
-            </div>
-  
-            <div class="modal-actions">
-              <button class="save-btn" @click="savePassenger">Save ✔</button>
-              <button class="discard-btn" @click="closeModal">Discard ✖</button>
-            </div>
+        <div class="flight-mode-toggle">
+          <label class="toggle-label">Flight view mode</label>
+          <div class="view-switch">
+            <span :class="{ active: !toggleView }">Passenger</span>
+            <label class="switch">
+              <input type="checkbox" v-model="toggleView" @change="switchView" />
+              <span class="slider round"></span>
+            </label>
+            <span :class="{ active: toggleView }">Reservation</span>
           </div>
         </div>
-      </main>
-    </div>
-  </template>
-  
-  <script setup>
-  import { ref, computed } from 'vue'
-  import { useRouter } from 'vue-router'
-  import { useRoute } from 'vue-router';
-  
-  const route = useRoute()
-  const router = useRouter()
-  const flightID = route.params.flightID;
-  const airlineID = route.params.airlineID;
-  
-  const toggleView = ref(false)
-  const searchQuery = ref('')
-  const showModal = ref(false)
-  const isEditing = ref(false)
-  const editingIndex = ref(null)
-  const form = ref({
-    id: null,
-    userId: '',
-    reservationId: '',
-    seat: '',
-    firstName: '',
-    middleName: '',
-    lastName: '',
-    nationality: '',
-    birth: '',
-    passport: '',
-    address: ''
-  })
-  
-  const passengers = ref([
-    { id: 1, seat: '01A', username: 'inwza241', fullname: 'Firstname Lastname', userId: 'USR001', nationality: 'Thai', birth: '2004-10-01', address: '327 Prachauthit Road' },
-    { id: 2, seat: '02B', username: 'jaturon93', fullname: 'Jaturon Nin', userId: 'USR002', nationality: 'Thai', birth: '2004-02-02', address: 'Bangkok' },
-    { id: 3, seat: '03C', username: 'piyanit', fullname: 'Piyanit Dee', userId: 'USR003', nationality: 'Thai', birth: '2004-03-03', address: 'Chiang Mai' },
-  ])
+        <div class="search-actions">
+          <input class="search-box" v-model="searchQuery" placeholder="🔍 Search Passenger" />
+          <button class="add-btn" @click="openModal()">+ Add</button>
+        </div>
+      </div>
 
-  const filtered = computed(() => {
-    const q = searchQuery.value.toLowerCase()
-    return passengers.value.filter(p =>
-      p.username.toLowerCase().includes(q) ||
-      p.fullname.toLowerCase().includes(q) ||
-      p.seat.includes(q)
-    )
-  })
-  
-  function switchView() {
-  const flightID = route.params.flightID;  // Get flightId from route
-  const airlineID = route.params.airlineID;  // Get airlineID from route
+      <!-- TABLE -->
+      <div class="payment-table">
+        <table class="passenger-table">
+          <thead>
+            <tr>
+              <th class="spacer-col"></th>
+              <th>User</th>
+              <th>SeatID</th>
+              <th>Full Name</th>
+              <th>Nationality</th>
+              <th>Birth</th>
+              <th>Address</th>
+              <th>Action</th>
+              <th class="spacer-col"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(p, index) in filtered" :key="p.id" class="ticket-row">
+              <td>{{ p.username }}<br><span class="small-id">#{{ p.userId }}</span></td>
+              <td>{{ p.seat }}</td>
+              <td>{{ p.fullname }}</td>
+              <td>{{ p.nationality }}</td>
+              <td>{{ p.birth }}</td>
+              <td>{{ p.address }}</td>
+              <td>
+                <div class="action-buttons">
+                  <i class="fa fa-edit" @click="openModal(p, index)"></i>
+                  <font-awesome-icon icon="trash"  @click="deletePassenger(p.id)" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-  if (toggleView.value) {
-    router.push({
-      name: 'FlightReservation',  // Ensure this route name is correct
-      params: {
-        flightID: flightID,  // Pass flightId as a route parameter
-        airlineID: airlineID  // Pass airlineID as a route parameter
-      }
-    });
-  } else {
-    router.push({
-      name: 'PassengerManagement',  // Ensure this route name is correct
-      params: {
-        flightID: flightID,  // Pass flightId as a route parameter
-        airlineID: airlineID  // Pass airlineID as a route parameter
-      }
-    });
+      <!-- MODAL -->
+      <div v-if="showModal" class="modal">
+        <div class="modal-content user-form">
+          <h3>{{ isEditing ? 'Modify Passenger' : 'Add Passenger' }}</h3>
+          <div class="form-row">
+            <input v-model="form.reservationId" placeholder="Reservation ID" />
+            <input v-model="form.seat" placeholder="Seat ID" />
+          </div>
+
+          <div class="form-row">
+            <input v-model="form.firstName" placeholder="First Name" />
+            <input v-model="form.middleName" placeholder="Middle Name" />
+            <input v-model="form.lastName" placeholder="Last Name" />
+          </div>
+
+          <div class="form-row">
+            <input v-model="form.nationality" placeholder="Nationality" />
+            <input type="date" v-model="form.birth" />
+            <input v-model="form.passport" placeholder="Passport Number" />
+          </div>
+
+          <div class="form-row">
+            <input v-model="form.address" placeholder="Address" />
+          </div>
+
+          <div class="modal-actions">
+            <button class="save-btn" @click="savePassenger">Save ✔</button>
+            <button class="discard-btn" @click="closeModal">Discard ✖</button>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useRoute } from 'vue-router';
+import axios from 'axios'
+
+const route = useRoute()
+const router = useRouter()
+const flightID = route.params.flightID;
+const airlineID = route.params.airlineID;
+
+const toggleView = ref(false)
+const searchQuery = ref('')
+const showModal = ref(false)
+const isEditing = ref(false)
+const editingIndex = ref(null)
+const form = ref({
+  id: null,
+  userId: '',
+  reservationId: '',
+  seat: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  nationality: '',
+  birth: '',
+  passport: '',
+  address: ''
+})
+
+const passengers = ref([])
+
+async function loadPassengersFromReservation() {
+  try {
+    const res = await axios.get(`/api/reservation?flightID=${flightID}`)
+    // Mapping reservation data to passenger-style objects
+    passengers.value = res.data.map(r => ({
+      id: r.ReservationID,
+      seat: r.SeatNumber,
+      userId: r.UserID,
+      username: r.Username,
+      fullname: '-',       // Placeholder: No name info in Reservation       // Placeholder
+      nationality: '-',    // Placeholder: Add via modal
+      birth: '-',          // Placeholder
+      address: '-'         // Placeholder
+    }))
+  } catch (err) {
+    console.error('Failed to load reservations as passengers:', err)
   }
 }
 
+onMounted(() => {
+  loadPassengersFromReservation()
+})
+
+const filtered = computed(() => {
+  const q = searchQuery.value.toLowerCase()
+  return passengers.value.filter(p =>
+    p.username.toLowerCase().includes(q) ||
+    p.fullname.toLowerCase().includes(q) ||
+    p.seat.includes(q)
+  )
+})
+
+function switchView() {
+const flightID = route.params.flightID;  // Get flightId from route
+const airlineID = route.params.airlineID;  // Get airlineID from route
+
+if (toggleView.value) {
+  router.push({
+    name: 'FlightReservation',  // Ensure this route name is correct
+    params: {
+      flightID: flightID,  // Pass flightId as a route parameter
+      airlineID: airlineID  // Pass airlineID as a route parameter
+    }
+  });
+} else {
+  router.push({
+    name: 'PassengerManagement',  // Ensure this route name is correct
+    params: {
+      flightID: flightID,  // Pass flightId as a route parameter
+      airlineID: airlineID  // Pass airlineID as a route parameter
+    }
+  });
+}
+}
   
   function openModal(p = null, idx = null) {
     if (p) {
@@ -199,20 +218,46 @@
     showModal.value = false
   }
   
-  function savePassenger() {
-    if (isEditing.value && editingIndex.value !== null) {
-      passengers.value.splice(editingIndex.value, 1, { ...form.value })
-    } else {
-      passengers.value.push({ ...form.value })
+  async function savePassenger() {
+    const payload = {
+      reservationId: form.value.reservationId,
+      seatID: form.value.seat,
+      firstName: form.value.firstName,
+      middleName: form.value.middleName,
+      lastName: form.value.lastName,
+      nationality: form.value.nationality,
+      birth: form.value.birth,
+      passport: form.value.passport,
+      address: form.value.address
+    };
+
+    try {
+      if (isEditing.value && editingIndex.value !== null) {
+        await axios.put(`/api/passenger/${form.value.id}`, payload)
+      } else {
+        await axios.post('/api/passenger', payload)
+      }
+      await loadPassengers()
+      closeModal()
+    } catch (err) {
+      alert('Error saving passenger')
+      console.error(err)
     }
-    closeModal()
   }
+
   
-  function deletePassenger(id) {
-    if (confirm('Delete this passenger?')) {
-      passengers.value = passengers.value.filter(p => p.id !== id)
+  async function deletePassenger(id) {
+    if (confirm("Delete this passenger?")) {
+      try {
+        await axios.delete(`/api/passenger/${id}`)
+        await loadPassengers()
+      } catch (err) {
+        alert("Failed to delete")
+        console.error(err)
+      }
     }
   }
+
   
   function goBack() {
     router.back()

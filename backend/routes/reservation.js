@@ -1,29 +1,47 @@
 import express from "express";
-import db from "../db.js";
+import getDBConnection from "../db.js";
 
 const router = express.Router();
 
 // ------------- Reservation -------------
 
-// Get all Reservations
+// Get all Reservations (with Seat + User + Payment info)
 router.get("/", (req, res) => {
-    const query = "SELECT * FROM Reservation";
-  
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error retrieving reservations");
-      }
-      res.json(results);
-    });
+  const db = getDBConnection();
+  const query = `
+    SELECT 
+      r.ReservationID,
+      r.Status,
+      r.BookingDate,
+      u.UserID,
+      u.Username,
+      s.SeatNumber,
+      p.PaymentID,
+      p.Amount
+    FROM Reservation r
+    JOIN User u ON r.UserID = u.UserID
+    JOIN Seat s ON r.SeatID = s.SeatID
+    LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
+  `;
+
+  db.query(query, (err, results) => {
+    db.end();
+    if (err) {
+      console.error(err);
+      return res.status(500).send("Error retrieving reservations");
+    }
+    res.json(results);
+  });
 });
 
 // Get a single Reservation by ID
 router.get("/:id", (req, res) => {
+    const db = getDBConnection();
     const reservationID = req.params.id;
     const query = "SELECT * FROM Reservation WHERE ReservationID = ?";
   
     db.query(query, [reservationID], (err, result) => {
+      db.end();
       if (err) {
         console.error(err);
         return res.status(500).send("Error retrieving reservation");
@@ -33,15 +51,54 @@ router.get("/:id", (req, res) => {
       }
       res.json(result[0]);
     });
-  });
+});
 
+// Get full detail of a Reservation by ID (with User + Seat + Flight + Payment)
+router.get("/", (req, res) => {
+  const db = getDBConnection();
+  const flightID = req.query.flightID;
+
+  let query = `
+    SELECT 
+      r.ReservationID,
+      r.Status,
+      r.BookingDate,
+      u.UserID,
+      u.Username,
+      s.SeatNumber,
+      p.PaymentID,
+      p.Amount,
+      r.FlightID
+    FROM Reservation r
+    JOIN User u ON r.UserID = u.UserID
+    JOIN Seat s ON r.SeatID = s.SeatID
+    LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
+  `;
+  const params = [];
+
+  if (flightID) {
+    query += " WHERE r.FlightID = ?";
+    params.push(flightID);
+  }
+
+  db.query(query, params, (err, results) => {
+    db.end();
+    if (err) {
+      console.error(err);
+      return res.status(500).send("Error retrieving reservations");
+    }
+    res.json(results);
+  });
+});
 // Create a new Reservation
 router.post("/", (req, res) => {
+    const db = getDBConnection();
+    console.log("Incoming reservation payload:", req.body);
     const {
       userID,        // INTEGER: 1234
       flightID,      // INTEGER: 1234
       seatNumber,    // STRING: 'A2'
-      status,        // ENUM('Pending', 'Confirmed', 'Cancelled')
+      status,        // ENUM('Pending', 'Confirmed', 'Canceled')
       bookingDate    // DATETIME: '2025-05-15 08:00'
     } = req.body;
   
@@ -83,6 +140,7 @@ router.post("/", (req, res) => {
         `;
         const values = [userID, flightID, seatID, status, bookingDate];
         db.query(insertQuery, values, (err, result) => {
+          db.end();
           if (err) {
             console.error(err);
             return res.status(500).send("Database error creating reservation");
@@ -112,10 +170,12 @@ router.post("/", (req, res) => {
 
 // Delete a Reservation
 router.delete("/:id", (req, res) => {
+    const db = getDBConnection();
     const reservationID = req.params.id;
     const query = "DELETE FROM Reservation WHERE ReservationID = ?";
   
     db.query(query, [reservationID], (err, results) => {
+      db.end();
       if (err) {
         console.error(err);
         return res.status(500).send("Reservation deleting flight");
@@ -129,6 +189,7 @@ router.delete("/:id", (req, res) => {
 
 // Update a Reservation
 router.put("/:id", (req, res) => {
+    const db = getDBConnection();
     const reservationID = req.params.id;
     const {
       userID,
@@ -177,6 +238,7 @@ router.put("/:id", (req, res) => {
           `;
           const values = [userID, flightID, newSeatID, status, bookingDate, reservationID];
           db.query(updateQuery, values, (err) => {
+            db.end();
             if (err) return res.status(500).send("Error updating reservation");
   
             // Mark new seat as unavailable
@@ -197,4 +259,4 @@ router.put("/:id", (req, res) => {
     });
   });
   
-export default router;
+export default router

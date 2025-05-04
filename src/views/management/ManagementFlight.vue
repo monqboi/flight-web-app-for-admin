@@ -27,15 +27,15 @@ const tableHeaders = [
 ];
 
 const statusOptions = [
-  { label: "All", value: "all", class: "all" },
-  { label: "Canceled", value: "canceled", class: "canceled" },
+  { label: "All", value: "All", class: "All" },
+  { label: "Canceled", value: "Canceled", class: "Canceled" },
   {
     label: "Completed",
-    value: "completed",
-    class: "completed",
+    value: "Completed",
+    class: "Completed",
   },
-  { label: "Pending", value: "pending", class: "pending" },
-  { label: "Delayed", value: "delayed", class: "delayed" },
+  { label: "Pending", value: "Pending", class: "Pending" },
+  { label: "Delayed", value: "Delayed", class: "Delayed" },
 ];
 
 const route = useRoute();

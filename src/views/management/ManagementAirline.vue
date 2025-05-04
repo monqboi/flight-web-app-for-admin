@@ -13,10 +13,17 @@ onMounted(() => {
   airlineStore.setSearchQuery("");
 });
 
-const addAirline = (newAirline) => {
-  airlineStore.addAirline(newAirline);
+const addAirline = async (newAirline) => {
+  await airlineStore.addAirline(newAirline);
   isShowModalAddAirline.value = false;
 };
+
+const updateAirline = async (airlineData) => {
+  await airlineStore.updateAirline(airlineData); 
+  isShowModalAddAirline.value = false;
+  isEditMode.value = false;
+};
+
 
 const showModalAddAirline = () => {
   isShowModalAddAirline.value = true;
@@ -39,7 +46,7 @@ const handleSearch = (event) => {
             </div>
             <input
               type="text"
-              placeholder="Search Admin"
+              placeholder="Search Airline"
               class="search-input"
               @input="handleSearch"
             />
@@ -91,16 +98,15 @@ const handleSearch = (event) => {
         <div class="card-section status-section" style="grid-area: status">
           <select
             class="airline-status"
-            v-model="airline.airlineStatus"
-            @change="
-              airlineStore.updateAirlineStatus(
-                airline.airlineID,
-                airline.airlineStatus
-              )
+            :value="airline.airlineStatus"
+            @change="(e) => 
+            airlineStore.updateAirlineStatus(
+              airline.airlineID,
+              e.target.value)
             "
           >
-            <option value="open">Open</option>
-            <option value="temporarily-closed">Temporarily Closed</option>
+            <option value="Open">Open</option>
+            <option value="Temporarily closed">Temporarily Closed</option>
           </select>
         </div>
 
@@ -138,11 +144,11 @@ const handleSearch = (event) => {
         <div class="card-section airline-icon-section" style="grid-area: icon">
           <div class="airline-plane-icon">
             <img
-              v-if="airline.airlineStatus === 'open'"
+              v-if="airline.airlineStatus === 'Open'"
               src="/management-pic/management-airline/airplane-active-icon.png"
               alt="Open Airline"
             />
-            <div v-else-if="airline.airlineStatus === 'temporarily-closed'">
+            <div v-else-if="airline.airlineStatus === 'Temporarily closed'">
               <div class="status-closed">
                 <p>Temporarily Close</p>
               </div>
@@ -158,9 +164,12 @@ const handleSearch = (event) => {
   </div>
   <ModalAddAirline
     :isShowModalAddAirline="isShowModalAddAirline"
+    :editMode="isEditMode"
+    :existingAirline="formToEdit"
     @close="isShowModalAddAirline = false"
     @addAirline="addAirline"
-  ></ModalAddAirline>
+    @updateAirline="updateAirline"
+  />
 </template>
 
 <style scoped>

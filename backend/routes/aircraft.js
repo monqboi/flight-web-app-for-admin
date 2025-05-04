@@ -6,7 +6,7 @@ const router = express.Router();
 // ------------- Aircraft -------------
 
 // Get all Aircrafts
-router.get("/aircraft", (req, res) => {
+router.get("/", (req, res) => {
     const query = "SELECT * FROM Aircraft";
   
     db.query(query, (err, results) => {
@@ -36,7 +36,7 @@ router.get("/:id", (req, res) => {
 });
 
 // Update Aircraft status ('Available', 'Not Available')
-router.put("/aircraft/:id/status", (req, res) => {
+router.put("/:id/status", (req, res) => {
     const aircraftID = req.params.id;
     const { status } = req.body;
   

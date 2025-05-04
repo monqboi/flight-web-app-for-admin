@@ -10,11 +10,10 @@ const showConfirmAddFlight = () => {
   isShowConfirmModal.value = true;
 };
 
-defineProps({
-  isShowModalAddAirline: {
-    type: Boolean,
-    default: false,
-  },
+const props = defineProps({
+  isShowModalAddAirline: Boolean,
+  editMode: Boolean,
+  existingAirline: Object,
 });
 
 const confirmMode = ref("");
@@ -66,7 +65,13 @@ const discardAddAirline = () => {
 };
 
 const addAirline = () => {
-  const airlineData = { ...form.value };
+  const airlineData = {};
+  for (const key in form.value) {
+    airlineData[key] = typeof form.value[key] === "string"
+      ? form.value[key].trim()
+      : form.value[key];
+  }
+
   emit("addAirline", airlineData);
   closeModal();
 };

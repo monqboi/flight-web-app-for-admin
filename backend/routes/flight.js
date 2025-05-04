@@ -1,16 +1,18 @@
 import express from "express";
-import db from "../db.js";
+import getDBConnection from "../db.js";
 import combineDateTime from '../utils/combineDateTime.js';
 
 const router = express.Router();
 
 // ------------- Flight -------------
 
-// Get all Flights
+// Get all Flights  
 router.get("/", (req, res) => {
-  const query = "SELECT * FROM Flight";
+  const db = getDBConnection();
+  const query = "SELECT * FROM Flight"; 
 
   db.query(query, (err, results) => { 
+    db.end();
     if (err) {
       console.error(err);
       return res.status(500).send("Error retrieving flights");
@@ -35,10 +37,12 @@ router.get("/", (req, res) => {
 
 // Get a single Flight by ID
 router.get("/:id", (req, res) => {
+  const db = getDBConnection();
   const flightID = req.params.id;
   const query = "SELECT * FROM Flight WHERE FlightID = ?";
 
   db.query(query, [flightID], (err, result) => {
+    db.end();
     if (err) {
       console.error(err);
       return res.status(500).send("Error retrieving flight");
@@ -65,11 +69,13 @@ router.get("/:id", (req, res) => {
 
 // Create a new Flight
 router.post("/", (req, res) => {
+  const db = getDBConnection();
+  console.log("Incoming flight payload:", req.body);
   try {
     const {
-      airlineID, // INTEGER: 1234
-      departure, // VARCHAR(100): 'BKK'
-      destination, // VARCHAR(100): 'USA'
+      airlineID,        // INTEGER: 1234
+      departure,        // VARCHAR(100): 'BKK'
+      destination,      // VARCHAR(100): 'USA'
       departureDate,    // '2025-05-15'
       departureTime,    // '18:00' 
       arrivalDate,      // '2025-05-16'
@@ -115,18 +121,20 @@ router.post("/", (req, res) => {
     `;
 
     const values = [
-      airlineID,
-      departureUpper,
-      destinationUpper,
+      flightID,         // INTEGER: 1234
+      airlineID,        // INTEGER: 1234
+      departure,        // VARCHAR(100): 'BKK'
+      destination,      // VARCHAR(100): 'USA'
       departureDateTime, // DATETIME: '2025-05-15 22:00'
-      arrivalDateTime, // DATETIME: '2025-05-16 6:00'
-      stopOver,
-      duration,
-      aircraftID,
-      status,
+      arrivalDateTime,  // DATETIME: '2025-05-16 6:00
+      stopOver,         // VARCHAR(100): 'JPN, KR'
+      duration,         // INTEGER: 660
+      aircraftID,       // INTEGER: 1234
+      status            // ENUM('Pending', 'Delayed', 'Completed', 'Canceled')
     ];
 
     db.query(query, values, (err, results) => {
+      db.end();
       if (err) {
         console.error(err);
         return res.status(500).send("Database error when inserting flight");
@@ -145,6 +153,7 @@ router.post("/", (req, res) => {
 
 // Update an existing Flight
 router.put("/:id", (req, res) => {
+  const db = getDBConnection();
   const flightID = req.params.id;
   const {
     departure,
@@ -207,6 +216,7 @@ router.put("/:id", (req, res) => {
   ];
 
   db.query(query, values, (err, results) => {
+    db.end();
     if (results.affectedRows === 0) {
       return res.status(404).send("Flight not found");
     }
@@ -220,10 +230,12 @@ router.put("/:id", (req, res) => {
 
 // Delete a Flight
 router.delete("/:id", (req, res) => {
+  const db = getDBConnection();
   const flightID = req.params.id;
   const query = "DELETE FROM Flight WHERE FlightID = ?";
 
   db.query(query, [flightID], (err, results) => {
+    db.end();
     if (err) {
       console.error(err);
       return res.status(500).send("Error deleting flight");

@@ -43,6 +43,16 @@ export const useAirlineStore = defineStore("airline", {
       }
     },
 
+    // Update full airline data
+    async updateAirline(airlineID, updatedAirline) {
+      try {
+        await axios.put(`/api/airline/${airlineID}`, updatedAirline);
+        await this.loadAirlines();
+      } catch (err) {
+        console.error("Failed to update airline:", err);
+      }
+    },
+
     // Update Airline Status to backend
     async updateAirlineStatus(airlineID, status) {
       try {
@@ -51,14 +61,14 @@ export const useAirlineStore = defineStore("airline", {
         });
         await this.loadAirlines(); // reload after update
       } catch (err) {
-        console.error("Failed to update status:", err);
+        console.error("Failed to update status:", err?.response?.data || err.message);
       }
     },
 
     // Delete Airline from backend
     async deleteAirline(airlineID) {
       try {
-        await axios.delete(`/api/airline/${airlineID}`);
+        await axios.delete(`/api/airline/${airlineID}`) ;
         await this.loadAirlines();
       } catch (err) {
         console.error("Failed to delete airline:", err);

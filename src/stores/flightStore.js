@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { flightData } from "@/data/management-flight";
+import axios from 'axios';
 
 export const useFlightStore = defineStore("flight", {
   state: () => ({
@@ -43,48 +43,44 @@ export const useFlightStore = defineStore("flight", {
   },
 
   actions: {
-    loadFlights() {
-      this.flights = flightData;
+    async loadFlights() {
+      try {
+        const res = await axios.get('/api/flight');
+        this.flights = res.data;
+      } catch (err) {
+        console.error("Failed to load flights", err);
+      }
     },
-    addFlight(flight) {
-      this.flights.push(flight);
+    async addFlight(newFlight) {
+      try {
+        const res = await axios.post('/api/flight', newFlight);
+        this.flights.push({ ...newFlight, flightID: res.data.flightID });
+      } catch (err) {
+        console.error("Failed to add flight", err);
+      }
     },
-    updateFlight(flightID, updatedFlight) {
-      const index = this.flights.findIndex(
-        (flight) => flight.flightID === flightID
-      );
-      if (index !== -1) {
-        // ตรวจสอบว่ามีการเปลี่ยนแปลงจริงหรือไม่
-        const hasChanges = Object.keys(updatedFlight).some(
-          (key) => updatedFlight[key] !== this.flights[index][key]
-        );
-
-        if (hasChanges) {
-          const updated = {
-            ...this.flights[index],
-            ...updatedFlight,
-          };
-          this.flights.splice(index, 1, updated);
+    async updateFlight(flightID, updatedFlight) {
+      try {
+        await axios.put(`/api/flight/${flightID}`, updatedFlight);
+        const index = this.flights.findIndex(f => f.flightID === flightID);
+        if (index !== -1) {
+          this.flights[index] = { ...this.flights[index], ...updatedFlight };
         }
+      } catch (err) {
+        console.error("Failed to update flight", err);
       }
     },
     updateSeatFlightAvailability(flightID, isSeatAvailable) {
       this.updateFlight(flightID, { isSeatAvailable });
     },
-    deleteFlight(flightID) {
-      const index = this.flights.findIndex(
-        (flight) => flight.flightID === flightID
-      );
-      if (index !== -1) {
-        this.flights.splice(index, 1);
+
+    async deleteFlight(flightID) {
+      try {
+        await axios.delete(`/api/flight/${flightID}`);
+        this.flights = this.flights.filter(f => f.flightID !== flightID);
+      } catch (err) {
+        console.error("Failed to delete flight", err);
       }
-    },
-    setSearchQuery(query) {
-      const trimmedQuery = query.trim().toLowerCase();
-      this.searchQuery = trimmedQuery;
-    },
-    setSelectedStatus(status) {
-      this.selectedFlightStatus = status;
-    },
-  },
+    }
+  } 
 });

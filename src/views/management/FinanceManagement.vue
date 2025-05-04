@@ -20,7 +20,7 @@
         <select class="status-filter" v-model="statusFilter">
           <option value="">All Status</option>
           <option>Pending</option>
-          <option>Success</option>
+          <option>Successful</option>
           <option>Failed</option>
         </select>
         <button class="add-btn" @click="openModal()">+ Add</button>
@@ -76,7 +76,7 @@
           <input type="number" v-model="form.amount" placeholder="Amount" />
           <select v-model="form.status">
             <option>Pending</option>
-            <option>Success</option>
+            <option>Successful</option>
             <option>Failed</option>
           </select>
         </div>
@@ -87,7 +87,7 @@
             <option>Credit Card</option>
             <option>Paypal</option>
             <option>Bank Transfer</option>
-          </select>
+          </select> 
         </div>
       
 
@@ -116,95 +116,113 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
-const searchQuery = ref('');
-const showAddModal = ref(false);
-const editingPayment = ref(false);
-const currentPage = ref(1);
-const paymentsPerPage = 5;
-const statusFilter = ref('');
-const showModal = ref(false);
+  import { ref, reactive, computed } from 'vue';
+  import axios from 'axios';
+  
+  const searchQuery = ref('');
+  const showAddModal = ref(false);
+  const editingPayment = ref(false);
+  const currentPage = ref(1);
+  const paymentsPerPage = 5;
+  const statusFilter = ref('');
+  const payments = ref([]);
 
-const payments = reactive([
-  { id: 'PMT-001', reservationId: 'RSV-2023101', userId: 'USR001', username: 'inwza241', route: 'BKK → JKT', date: '2024-04-01', amount: 5600, status: 'Pending' },
-  { id: 'PMT-002', reservationId: 'RSV-2023102', userId: 'USR002', username: 'jaturon93', route: 'DMK → CNX', date: '2024-04-04', amount: 3200, status: 'Success' }
-]);
-
-const form =  reactive({
-  reservationId: '',
-  date: '',
-  amount: null,
-  status: 'Pending',
-  method: '',
-});
-
-const filteredPayments = computed(() => {
-  return payments.filter(p => {
-    const matchSearch = !searchQuery.value || p.username.toLowerCase().includes(searchQuery.value.toLowerCase());
-    const matchStatus =
-      statusFilter.value.trim().toLowerCase() === '' ||
-      p.status.toLowerCase() === statusFilter.value.trim().toLowerCase();
-    return matchSearch && matchStatus;
+  const form = reactive({
+    reservationId: '',
+    userId: '',
+    date: '',
+    amount: null,
+    status: 'Pending',
+    method: '',
   });
-});
 
+  const filteredPayments = computed(() => {
+    return payments.value.filter(p => {
+      const matchSearch = !searchQuery.value || p.username.toLowerCase().includes(searchQuery.value.toLowerCase());
+      const matchStatus = !statusFilter.value || p.status.toLowerCase() === statusFilter.value.toLowerCase();
+      return matchSearch && matchStatus;
+    });
+  });
 
-const paginatedPayments = computed(() => {
-  const start = (currentPage.value - 1) * paymentsPerPage;
-  return filteredPayments.value.slice(start, start + paymentsPerPage);
-});
+  const paginatedPayments = computed(() => {
+    const start = (currentPage.value - 1) * paymentsPerPage;
+    return filteredPayments.value.slice(start, start + paymentsPerPage);
+  });
 
-const totalPages = computed(() => {
-  return Math.ceil(filteredPayments.value.length / paymentsPerPage);
-});
+  const totalPages = computed(() => {
+    return Math.ceil(filteredPayments.value.length / paymentsPerPage);
+  });
 
-function openModal(payment = null) {
-  if (payment) {
-    Object.assign(form, payment);
-  } else {
+  async function savePayment() {
+    try {
+      const payload = {
+        reservationID: form.reservationId,
+        userID: form.userId,
+        amount: form.amount,
+        paymentMethod: form.method,
+        paymentDate: form.date,
+        status: form.status,
+      };
+
+      if (editingPayment.value) {
+        await axios.put(`/api/payment/${form.id}`, payload);
+      } else {
+        await axios.post('/api/payment', payload);
+      }
+
+      await loadPayments();
+      discardPayment();
+    } catch (err) {
+      alert('Failed to save payment');
+      console.error(err);
+    }
+  }
+
+  async function loadPayments() {
+    try {
+      const res = await axios.get('/api/payment');
+      payments.value = res.data;
+    } catch (err) {
+      console.error('Failed to load payments', err);
+    }
+  }
+
+  function openModal(payment = null) {
+    if (payment) {
+      Object.assign(form, payment);
+      editingPayment.value = true;
+    } else {
+      Object.assign(form, {
+        reservationId: '',
+        userId: '',
+        date: '',
+        amount: null,
+        status: 'Pending',
+        method: '',
+      });
+      editingPayment.value = false;
+    }
+    showAddModal.value = true;
+  }
+
+  function openEdit(payment) {
+    openModal(payment);
+  }
+
+  function discardPayment() {
     Object.assign(form, {
       reservationId: '',
-      date: '', 
-      amount: null, 
+      userId: '',
+      date: '',
+      amount: null,
       status: 'Pending',
       method: '',
     });
+    showAddModal.value = false;
+    editingPayment.value = false;
   }
-  showAddModal.value = true;
-}
-
-
-
-function openEdit(payment) {
-  editingPayment.value = true;
-  Object.assign(form, payment);
-  showAddModal.value = true;
-}
-
-function savePayment() {
-  if (!form.id) return alert('Please enter a Payment ID');
-
-  const duplicate = payments.find(p => p.id === form.id);
-  const idx = payments.findIndex(p => p.id === form.id);
-
-  if (idx === -1 && duplicate) {
-    return alert('Payment ID already exists!');
-  }
-
-  if (idx !== -1) {
-    payments[idx] = { ...form };
-  } else {
-    payments.push({ ...form });
-  }
-
-  discardPayment();
-}
-
-function discardPayment() {
-  Object.assign(form, {  reservationId: '', username: '', route: '', date: '', amount: null, status: 'Pending' });
-  showAddModal.value = false;
-  editingPayment.value = false;
-}
+  
+  loadPayments();
 </script>
 
 <style scoped> 

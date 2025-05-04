@@ -6,6 +6,6 @@ export default function getDBConnection() {
     port: 18371,
     user: 'noboyhereadmin1',
     password: 'noboyhere888@admin1',
-    database: 'FlightDB',
+    database: 'FlightReservationDBNew1',
   });
 }

@@ -98,6 +98,57 @@ router.post("/", (req, res) => {
   });
 });
 
+// Update all fields of an Airline
+router.put("/:id", (req, res) => {
+  const db = getDBConnection();
+  const airlineID = req.params.id;
+  const {
+    name,
+    name_short,
+    code,
+    contactPrefix,
+    contactNumber,
+    country,
+    headquarters,
+    airlineStatus,
+    airlineColor,
+    airlineImage,
+  } = req.body;
+
+  const query = `
+    UPDATE Airline
+    SET Name = ?, AirlineNameShort = ?, Code = ?, ContactPrefix = ?, ContactNumber = ?, 
+        Country = ?, Headquarters = ?, AirlineStatus = ?, AirlineColor = ?, AirlineLogo = ?
+    WHERE AirlineID = ?
+  `;
+
+  const values = [
+    name,
+    name_short.trim().toUpperCase(),
+    code.trim().toUpperCase(),
+    contactPrefix,
+    contactNumber,
+    country,
+    headquarters,
+    airlineStatus,
+    airlineColor,
+    airlineImage,
+    airlineID,
+  ];
+
+  db.query(query, values, (err, results) => {
+    db.end();
+    if (err) {
+      console.error(err);
+      return res.status(500).send("Failed to update airline");
+    }
+    if (results.affectedRows === 0) {
+      return res.status(404).send("Airline not found");
+    }
+    res.json({ message: "Airline updated successfully" });
+  });
+});
+
 // Update Airline Status ('Open', 'Temporarily closed')
 router.put("/:id/status", (req, res) => {
   const db = getDBConnection();
@@ -129,4 +180,25 @@ router.put("/:id/status", (req, res) => {
   });
 });
 
+// Delete an Airline
+router.delete("/:id", (req, res) => {
+  const db = getDBConnection();
+  const airlineID = req.params.id;
+  const query = "DELETE FROM Airline WHERE AirlineID = ?";
+
+  db.query(query, [airlineID], (err, results) => {
+    db.end();
+    if (err) {
+      console.error(err);
+      return res.status(500).send("Error deleting airline");
+    }
+    if (results.affectedRows === 0) {
+      return res.status(404).send("Airline not found");
+    }
+    res.json({ message: "Airline deleted successfully" });
+  });
+});
+
+
 export default router;
+
