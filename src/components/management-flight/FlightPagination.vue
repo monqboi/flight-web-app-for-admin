@@ -13,8 +13,8 @@ const currentPage = ref(1);
 // ได้ข้อมูล flight ของ airlineID ที่เลือกจาก route params
 const flightData = computed(() => flightStore.getFlightsByAirlineId(airlineID));
 
-onMounted(() => {
-  flightStore.loadFlights();
+onMounted(async () => {
+  await flightStore.loadFlights(); 
   emit("update:paginatedData", paginatedFlights.value);
 });
 

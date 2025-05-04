@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import { flightData } from "@/data/management-flight";
+import axios from "axios";
 
 export const useFlightStore = defineStore("flight", {
   state: () => ({
@@ -16,73 +16,94 @@ export const useFlightStore = defineStore("flight", {
       const selectedStatus = state.selectedFlightStatus;
 
       return state.flights.filter((flight) => {
-        const matchAirlineID = flight.airlineID.toLowerCase() === trimmedID;
-
-        const matchQuery =
-          !query || String(flight.flightID).toLowerCase().includes(query);
-
-        const matchStatus =
-          !selectedStatus ||
-          selectedStatus === "all" ||
-          flight.flightStatus === selectedStatus;
-
+        const matchAirlineID = String(flight.airlineID).toLowerCase() === trimmedID;
+        const matchQuery = !query || String(flight.flightID).includes(query);
+        const matchStatus = !selectedStatus || selectedStatus === "all" || flight.flightStatus === selectedStatus;
         return matchAirlineID && matchQuery && matchStatus;
       });
     },
-    getFlightByID: (state) => (flightID) => {
-      return state.flights.find(
-        (flight) => Number(flight.flightID) === Number(flightID)
-      );
-    },
-    getFlightStatusByID: (state) => (flightID) => {
-      const flight = state.flights.find(
-        (flight) => flight.flightID === flightID
-      );
-      return flight ? flight.flightStatus : null;
-    },
+    getFlightByID: (state) => (flightID) => state.flights.find(f => +f.flightID === +flightID),
   },
 
   actions: {
-    loadFlights() {
-      this.flights = flightData;
+    async loadFlights() {
+      try {
+        const res = await axios.get("/api/flight");
+        this.flights = res.data;
+      } catch (error) {
+        console.error("Failed to fetch flights:", error);
+      }
     },
-    addFlight(flight) {
-      this.flights.push(flight);
-    },
-    updateFlight(flightID, updatedFlight) {
-      const index = this.flights.findIndex(
-        (flight) => flight.flightID === flightID
-      );
-      if (index !== -1) {
-        // ตรวจสอบว่ามีการเปลี่ยนแปลงจริงหรือไม่
-        const hasChanges = Object.keys(updatedFlight).some(
-          (key) => updatedFlight[key] !== this.flights[index][key]
-        );
 
-        if (hasChanges) {
-          const updated = {
-            ...this.flights[index],
-            ...updatedFlight,
-          };
-          this.flights.splice(index, 1, updated);
-        }
+    async addFlight(flightData) {
+      try {
+        const response = await axios.post("/api/flight", {
+          airlineID: flightData.airlineID,
+          departure: flightData.departure.airport,
+          departureDate: flightData.departure.date,
+          departureTime: flightData.departure.time,
+          destination: flightData.destination.airport,
+          arrivalDate: flightData.destination.date,
+          arrivalTime: flightData.destination.time,
+          stopOvers: flightData.stopOvers,
+          duration: {
+            time: parseInt(flightData.duration.time),
+            stop: parseInt(flightData.duration.stop),
+          },
+          aircraftID: flightData.aircraftID,
+          flightStatus: flightData.flightStatus,
+        });
+    
+        const newFlight = {
+          ...flightData,
+          flightID: response.data.flightID,  
+        };
+    
+        this.flights.push(newFlight);
+    
+      } catch (error) {
+        console.error("Failed to add flight:", error);
       }
     },
-    updateSeatFlightAvailability(flightID, isSeatAvailable) {
-      this.updateFlight(flightID, { isSeatAvailable });
-    },
-    deleteFlight(flightID) {
-      const index = this.flights.findIndex(
-        (flight) => flight.flightID === flightID
-      );
-      if (index !== -1) {
-        this.flights.splice(index, 1);
+
+    async updateFlight(flightID, updatedFlight) {
+      try {
+        const response = await axios.post("/api/flight", {
+          airlineID: flightData.airlineID,
+          departure: flightData.departure.airport,
+          departureDate: flightData.departure.date,
+          departureTime: flightData.departure.time,
+          destination: flightData.destination.airport,
+          arrivalDate: flightData.destination.date,
+          arrivalTime: flightData.destination.time,
+          stopOvers: flightData.stopOvers,    
+          duration: {
+            time: parseInt(flightData.duration.time),
+            stop: parseInt(flightData.duration.stop),
+          },
+          aircraftID: flightData.aircraftID,
+          flightStatus: flightData.flightStatus,
+        })
+        const index = this.flights.findIndex(f => f.flightID === flightID);
+        if (index !== -1) this.flights[index] = response.data; // updated flight
+      } catch (error) {
+        console.error("Failed to update flight:", error);
       }
     },
+
+    async deleteFlight(flightID) {
+      try {
+        await axios.delete(`/api/flight/${flightID}`);
+        this.flights = this.flights.filter(f => f.flightID !== flightID);
+      } catch (error) {
+        console.error("Failed to delete flight:", error);
+      }
+    },
+
     setSearchQuery(query) {
-      const trimmedQuery = query.trim().toLowerCase();
-      this.searchQuery = trimmedQuery;
+      this.searchQuery = query.trim().toLowerCase();
     },
+
     setSelectedStatus(status) {
       this.selectedFlightStatus = status;
     },

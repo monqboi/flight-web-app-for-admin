@@ -9,7 +9,7 @@ import {
   watchEffect,
 } from "vue";
 
-import { object, string } from "zod";
+import { object, string, number } from "zod";
 
 import ModalConfirm from "../ModalConfirm.vue";
 import { useAircraftStore } from "@/stores/aircraftStore";
@@ -22,8 +22,7 @@ const emit = defineEmits(["addFlight", "close", "editFlight"]);
 const route = useRoute();
 const aircraftStore = useAircraftStore();
 const flightStore = useFlightStore();
-const isShowConfirmModal = ref(false);
-const airlineID = route.params.airlineID;
+const airlineID = parseInt(route.params.airlineID);
 
 const props = defineProps({
   showModal: {
@@ -40,15 +39,22 @@ const props = defineProps({
   },
 });
 
+const isShowConfirmModal = ref(false);
+const aircrafts = ref([]);
+const loaded = ref(false);
+
 onMounted(() => {
+  loaded.value = false;
   aircraftStore.loadAircrafts();
+  aircrafts.value = aircraftStore.getAircraftsByAirlineID(airlineID);
+  loaded.value = true;
 });
 
 watch(
   () => props.selectedFlightID,
-  (newID) => {
-    if (props.formMode === "edit" && newID) {
-      const flight = flightStore.getFlightByID(newID);
+  () => {
+    if (props.formMode === "edit" && props.selectedFlightID) {
+      const flight = flightStore.getFlightByID(props.selectedFlightID);
       if (flight) {
         form.value = JSON.parse(JSON.stringify(flight));
       }
@@ -56,10 +62,6 @@ watch(
   },
   { immediate: true }
 );
-
-const aircrafts = computed(() => {
-  return aircraftStore.getAircraftsByAirlineID(airlineID) || [];
-});
 
 const flights = computed(() => {
   return flightStore.getAllFlights || [];
@@ -91,18 +93,9 @@ const formSchema = object({
     date: string().nonempty("Date is required"),
   }),
   duration: object({
-    time: string()
-      .nonempty("Duration time is required")
-      .refine((value) => parseInt(value, 10) > 0, {
-        message: "Duration time must be greater than 0",
-      }),
-    stop: string()
-      .nonempty("Stop count is required")
-      .refine((value) => parseInt(value, 10) > 0, {
-        message: "Stop count must be greater than 0",
-      }),
+    time: number().min(1, "Duration time must be greater than 0"), // Use .min() for validation
+    stop: number().min(0, "Stop count must be 0 or greater"), // Use .min() for validation
   }),
-  aircraftID: string().nonempty("Aircraft ID is required"),
   flightStatus: string().nonempty("Flight status is required"),
 })
   .refine((data) => data.departure.airport !== data.destination.airport, {
@@ -128,7 +121,7 @@ const formSchema = object({
 // form data
 const form = ref({
   flightID: null,
-  airlineID: "",
+  airlineID: null,
   departure: {
     airport: "",
     time: "",
@@ -143,7 +136,6 @@ const form = ref({
     time: "",
     stop: "",
   },
-  aircraftID: "",
   flightStatus: "",
   stopOvers: [],
 });
@@ -190,6 +182,7 @@ const showConfirmAddFlight = () => {
 const discardAddFlight = () => {
   confirmMode.value = "discard";
   showConfirmAddFlight();
+  // closeModalAndClearForm();
 };
 
 const addFlight = () => {
@@ -202,7 +195,7 @@ const addFlight = () => {
       airlineID: airlineID,
     };
     emit("editFlight", flightID, data);
-    closeModal();
+    closeModalAndClearForm();
     return;
   }
 
@@ -247,13 +240,19 @@ const closeModalAndClearForm = () => {
 const closeModal = () => {
   isShowConfirmModal.value = false;
   emit("close");
+  closeModalAndClearForm();
 };
 
 const handleAircraftSelection = (value) => {
   if (value === "add-aircraft") {
     showAircraftModal.value = true;
-    form.value.aircraftID = "";
+    form.value.aircraftID = null;
   }
+};
+
+const handleAircraftAdded = (newAircraft) => {
+  aircraftStore.loadAircrafts();
+  aircrafts.value = aircraftStore.getAircraftsByAirlineID(airlineID);
 };
 
 watch(
@@ -261,15 +260,20 @@ watch(
   (newStopCount) => {
     const stopCount = parseInt(newStopCount, 10);
     if (!isNaN(stopCount)) {
-      // Adjust the stopOvers array to match the selected number of stops
       form.value.stopOvers = Array.from({ length: stopCount }, () => "");
     }
   }
 );
+
+watch(
+  () => aircraftStore.loadAircrafts,
+  (newAircrafts) => {},
+  { deep: true }
+);
 </script>
 
 <template>
-  <Transition name="modal-container">
+  <Transition name="modal-container" v-if="loaded">
     <div v-if="showModal" class="modal-container" @click.self="closeModal">
       <div class="modal-content">
         <div>
@@ -360,6 +364,7 @@ watch(
                   <input
                     type="text"
                     placeholder="- - -"
+                    maxlength="100"
                     v-model="form.departure.airport"
                   />
                   <input type="date" v-model="form.departure.date" />
@@ -378,6 +383,7 @@ watch(
                   <input
                     type="text"
                     placeholder="- - -"
+                    maxlength="100"
                     v-model="form.destination.airport"
                   />
                   <input type="date" v-model="form.destination.date" />
@@ -407,6 +413,7 @@ watch(
                   "
                 >
                   <select
+                    :key="aircrafts.length"
                     v-model="form.aircraftID"
                     @change="handleAircraftSelection($event.target.value)"
                   >
@@ -434,12 +441,13 @@ watch(
                   <input
                     type="number"
                     placeholder="- -"
+                    min="0"
                     v-model="form.duration.time"
                   />
                 </div>
               </div>
 
-              <div>
+              <div v-if="parseInt(form.duration.stop) > 0">
                 <div class="form-row">
                   <label>Stop Over</label>
                 </div>
@@ -492,7 +500,10 @@ watch(
   <ModalAircraft
     v-if="showAircraftModal"
     :showAircraft="showAircraftModal"
+    :airlineID="airlineID"
+    formMode="add"
     @close="showAircraftModal = false"
+    @aircraftAdded="handleAircraftAdded"
   />
 </template>
 

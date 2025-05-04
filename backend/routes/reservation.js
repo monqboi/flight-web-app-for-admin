@@ -6,195 +6,124 @@ const router = express.Router();
 // ------------- Reservation -------------
 
 // Get all Reservations
-router.get("/", (req, res) => {
-    const query = "SELECT * FROM Reservation";
-  
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error retrieving reservations");
-      }
-      res.json(results);
-    });
+router.get("/", async (req, res) => {
+  try {
+    const [results] = await db.query("SELECT * FROM Reservation");
+    res.json(results);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error retrieving reservations");
+  }
 });
 
 // Get a single Reservation by ID
-router.get("/:id", (req, res) => {
+router.get("/:id", async (req, res) => {
+  try {
     const reservationID = req.params.id;
-    const query = "SELECT * FROM Reservation WHERE ReservationID = ?";
-  
-    db.query(query, [reservationID], (err, result) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error retrieving reservation");
-      }
-      if (result.length === 0) {
-        return res.status(404).send("Reservation not found");
-      }
-      res.json(result[0]);
-    });
-  });
+    const [result] = await db.query("SELECT * FROM Reservation WHERE ReservationID = ?", [reservationID]);
+    if (result.length === 0) return res.status(404).send("Reservation not found");
+    res.json(result[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error retrieving reservation");
+  }
+});
 
 // Create a new Reservation
-router.post("/", (req, res) => {
-    const {
+router.post("/", async (req, res) => {
+  try {
+    const { 
       userID,        // INTEGER: 1234
       flightID,      // INTEGER: 1234
       seatNumber,    // STRING: 'A2'
       status,        // ENUM('Pending', 'Confirmed', 'Cancelled')
       bookingDate    // DATETIME: '2025-05-15 08:00'
     } = req.body;
-  
-    if (!userID || !flightID || !seatNumber || !status || !bookingDate) {
-      return res.status(400).send("Missing required reservation fields");
-    }
-  
+
+    if (!userID || !flightID || !seatNumber || !status || !bookingDate)
+      return res.status(400).send("Missing required fields");
+
     // Check if user exists
-    const userQuery = "SELECT * FROM User WHERE UserID = ?";
-    db.query(userQuery, [userID], (err, userResult) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Database error checking user");
-      }
-      if (userResult.length === 0) {
-        return res.status(404).send("User not found");
-      }
-  
-      // Find SeatID from SeatNumber + FlightID
-      const seatQuery = `
-        SELECT SeatID FROM Seat 
-        WHERE SeatNumber = ? AND FlightID = ? AND Availability = 'Yes'
-      `;
-      db.query(seatQuery, [seatNumber, flightID], (err, seatResult) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).send("Database error finding seat");
-        }
-        if (seatResult.length === 0) {
-          return res.status(400).send("Seat not available or not found for this flight");
-        }
-  
-        const seatID = seatResult[0].SeatID;
-  
-        // Insert Reservation
-        const insertQuery = `
-          INSERT INTO Reservation (UserID, FlightID, SeatID, Status, BookingDate)
-          VALUES (?, ?, ?, ?, ?)
-        `;
-        const values = [userID, flightID, seatID, status, bookingDate];
-        db.query(insertQuery, values, (err, result) => {
-          if (err) {
-            console.error(err);
-            return res.status(500).send("Database error creating reservation");
-          }
-  
-          // Update Seat to 'No' (not available)
-          const updateSeatQuery = `
-            UPDATE Seat SET Availability = 'No' WHERE SeatID = ? AND FlightID = ?
-          `;
-          db.query(updateSeatQuery, [seatID, flightID], (err) => {
-            if (err) {
-              console.error(err);
-              return res.status(500).send("Reservation created but failed to update seat availability");
-            }
-  
-            res.status(201).json({
-              message: "Reservation created successfully",
-              reservationID: result.insertId,
-              seatID: seatID,
-              seatNumber: seatNumber
-            });
-          });
-        });
-      });
+    const [[user]] = await db.query("SELECT * FROM User WHERE UserID = ?", [userID]);
+    if (!user) return res.status(404).send("User not found");
+
+    // Find SeatID from SeatNumber + FlightID
+    const [[seat]] = await db.query(
+      `SELECT SeatID FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Availability = 'Yes'`,
+      [seatNumber, flightID]
+    );
+    if (!seat) return res.status(400).send("Seat not available");
+
+    const [insertResult] = await db.query(
+      `INSERT INTO Reservation (UserID, FlightID, SeatID, Status, BookingDate) VALUES (?, ?, ?, ?, ?)`,
+      [userID, flightID, seat.SeatID, status, bookingDate]
+    );
+
+    // Update Seat to 'No' (not available)
+    await db.query(
+      `UPDATE Seat SET Availability = 'No' WHERE SeatID = ? AND FlightID = ?`,
+      [seat.SeatID, flightID]
+    );
+
+    res.status(201).json({
+      message: "Reservation created successfully",
+      reservationID: insertResult.insertId,
+      seatID: seat.SeatID,
+      seatNumber
     });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error creating reservation");
+  }
+});
 
 // Delete a Reservation
-router.delete("/:id", (req, res) => {
+router.delete("/:id", async (req, res) => {
+  try {
     const reservationID = req.params.id;
-    const query = "DELETE FROM Reservation WHERE ReservationID = ?";
-  
-    db.query(query, [reservationID], (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Reservation deleting flight");
-      }
-      if (results.affectedRows === 0) {
-        return res.status(404).send("Reservation not found");
-      }
-      res.json({ message: "Reservation deleted successfully" });
-    });
-  });
+    const [results] = await db.query("DELETE FROM Reservation WHERE ReservationID = ?", [reservationID]);
+    if (results.affectedRows === 0) return res.status(404).send("Reservation not found");
+    res.json({ message: "Reservation deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error deleting reservation");
+  }
+});
 
 // Update a Reservation
-router.put("/:id", (req, res) => {
+router.put("/:id", async (req, res) => {
+  try {
     const reservationID = req.params.id;
-    const {
-      userID,
-      flightID,
-      seatNumber,
-      status,
-      bookingDate
-    } = req.body;
-  
-    if (!userID || !flightID || !seatNumber || !status || !bookingDate) {
-      return res.status(400).send("Missing required reservation fields");
-    }
-  
-    // Check if User exists
-    const userQuery = "SELECT * FROM User WHERE UserID = ?";
-    db.query(userQuery, [userID], (err, userResult) => {
-      if (err) return res.status(500).send("Error checking user");
-      if (userResult.length === 0) return res.status(404).send("User not found");
-  
-      // Find new SeatID from SeatNumber + FlightID
-      const seatQuery = `
-        SELECT SeatID FROM Seat 
-        WHERE SeatNumber = ? AND FlightID = ? AND Availability = 'Yes'
-      `;
-      db.query(seatQuery, [seatNumber, flightID], (err, seatResult) => {
-        if (err) return res.status(500).send("Error finding new seat");
-        if (seatResult.length === 0) {
-          return res.status(400).send("Seat not available or doesn't exist");
-        }
-  
-        const newSeatID = seatResult[0].SeatID;
-  
-        // Get the old SeatID to update availability
-        const oldSeatQuery = "SELECT SeatID FROM Reservation WHERE ReservationID = ?";
-        db.query(oldSeatQuery, [reservationID], (err, oldResult) => {
-          if (err) return res.status(500).send("Error retrieving old reservation");
-          if (oldResult.length === 0) return res.status(404).send("Reservation not found");
-  
-          const oldSeatID = oldResult[0].SeatID;
-  
-          // Update Reservation
-          const updateQuery = `
-            UPDATE Reservation
-            SET UserID = ?, FlightID = ?, SeatID = ?, Status = ?, BookingDate = ?
-            WHERE ReservationID = ?
-          `;
-          const values = [userID, flightID, newSeatID, status, bookingDate, reservationID];
-          db.query(updateQuery, values, (err) => {
-            if (err) return res.status(500).send("Error updating reservation");
-  
-            // Mark new seat as unavailable
-            const updateNewSeat = "UPDATE Seat SET Availability = 'No' WHERE SeatID = ?";
-            db.query(updateNewSeat, [newSeatID], (err) => {
-              if (err) console.warn("Failed to mark new seat as unavailable");
-  
-              // Mark old seat as available
-              const updateOldSeat = "UPDATE Seat SET Availability = 'Yes' WHERE SeatID = ?";
-              db.query(updateOldSeat, [oldSeatID], (err) => {
-                if (err) console.warn("Failed to free old seat");
-                res.json({ message: "Reservation updated successfully" });
-              });
-            });
-          });
-        });
-      });
-    });
-  });
-  
+    const { userID, flightID, seatNumber, status, bookingDate } = req.body;
+
+    if (!userID || !flightID || !seatNumber || !status || !bookingDate)
+      return res.status(400).send("Missing required fields");
+
+    const [[user]] = await db.query("SELECT * FROM User WHERE UserID = ?", [userID]);
+    if (!user) return res.status(404).send("User not found");
+
+    const [[newSeat]] = await db.query(
+      `SELECT SeatID FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Availability = 'Yes'`,
+      [seatNumber, flightID]
+    );
+    if (!newSeat) return res.status(400).send("Seat not available");
+
+    const [[oldRes]] = await db.query("SELECT SeatID FROM Reservation WHERE ReservationID = ?", [reservationID]);
+    if (!oldRes) return res.status(404).send("Reservation not found");
+
+    await db.query(
+      `UPDATE Reservation SET UserID = ?, FlightID = ?, SeatID = ?, Status = ?, BookingDate = ? WHERE ReservationID = ?`,
+      [userID, flightID, newSeat.SeatID, status, bookingDate, reservationID]
+    );
+
+    await db.query("UPDATE Seat SET Availability = 'No' WHERE SeatID = ?", [newSeat.SeatID]);
+    await db.query("UPDATE Seat SET Availability = 'Yes' WHERE SeatID = ?", [oldRes.SeatID]);
+
+    res.json({ message: "Reservation updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating reservation");
+  }
+});
+
 export default router;

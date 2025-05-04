@@ -19,7 +19,7 @@ const isShowConfirmModal = ref(false);
 
 const showConfirmAddFlight = () => {
   isShowConfirmModal.value = true;
-};
+  };
 
 const { isShowModalAddAirline, airlineID, formMode } = defineProps({
   isShowModalAddAirline: {
@@ -77,7 +77,6 @@ const form = ref({
 const isFormValid = computed(() => {
   const f = form.value;
   return (
-    f.airlineID &&
     f.name &&
     f.name_short &&
     f.code &&
@@ -108,7 +107,6 @@ const addAirline = () => {
   } else {
     airlineStore.addAirline({ ...form.value });
   }
-
   closeModal();
 };
 
@@ -169,10 +167,15 @@ onBeforeUnmount(() => {
   uploadInputRef.value = null;
 });
 
+const addPlusSign = () => {
+  // ตรวจสอบว่า contactPrefix ไม่มีเครื่องหมาย + ข้างหน้า
+  if (!form.value.contactPrefix.startsWith('+')) {
+    form.value.contactPrefix = '+' + form.value.contactPrefix.replace(/^(\+)?/, '');
+  }
+};
+
 const modalTitle = computed(() =>
-  airlineID && airlineID.trim() !== ""
-    ? "Edit Airline Details"
-    : "Add Airline Details"
+  airlineID ? "Edit Airline Details" : "Add Airline Details"
 );
 
 watch(
@@ -191,7 +194,6 @@ watch(
 );
 
 const selecedtedAirline = computed(() => {
-  console.log("selecedtedAirline", airlineStore.getAirlineByID(airlineID));
   return airlineStore.getAirlineByID(airlineID);
 });
 </script>
@@ -330,9 +332,14 @@ const selecedtedAirline = computed(() => {
                   <input
                     type="text"
                     placeholder="Enter Airline Name"
+                    maxlength="100"
                     v-model="form.name"
                   />
-                  <input type="text" placeholder="- -" v-model="form.code" />
+                  <input 
+                    type="text" 
+                    placeholder="- -" 
+                    maxlength="10"
+                    v-model="form.code" />
                 </div>
 
                 <div
@@ -358,16 +365,20 @@ const selecedtedAirline = computed(() => {
                   <input
                     type="text"
                     placeholder="+66"
+                    maxlength="3"
                     v-model="form.contactPrefix"
+                    @input="addPlusSign"
                   />
                   <input
                     type="text"
-                    placeholder="12345678"
+                    placeholder="1234567890"
+                    maxlength="11"
                     v-model="form.contactNumber"
                   />
                   <input
                     type="text"
                     placeholder="Enter Country"
+                    maxlength="50"
                     v-model="form.country"
                   />
                 </div>
@@ -375,11 +386,12 @@ const selecedtedAirline = computed(() => {
                 <div
                   class="form-row"
                   style="
-                    grid-template-columns: 1fr 2fr;
+                    grid-template-columns: 0.8fr 1fr 2fr;
                     gap: 20px;
                     align-items: center;
                   "
                 >
+                  <label>Short Name</label>
                   <label>Airline Color</label>
                   <label>Headquarters</label>
                 </div>
@@ -393,6 +405,12 @@ const selecedtedAirline = computed(() => {
                   "
                 >
                   <input
+                    type="text"
+                    placeholder="- - -"
+                    maxlength="10"
+                    v-model="form.name_short"
+                  />
+                  <input
                     type="color"
                     v-model="form.airlineColor"
                     style="width: 100%; height: 100%"
@@ -400,6 +418,7 @@ const selecedtedAirline = computed(() => {
                   <input
                     type="text"
                     placeholder="Enter Headquarters of Airline"
+                    maxlength="50"
                     v-model="form.headquarters"
                   />
                 </div>

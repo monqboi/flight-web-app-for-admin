@@ -23,6 +23,10 @@ const editAirline = (id) => {
   isShowModalAddAirline.value = true;
 };
 
+const onStatusChange = (airlineID, newStatus) => {
+  airlineStore.updateAirlineStatus(airlineID, newStatus);
+};
+
 const showModalAddAirline = () => {
   isShowModalAddAirline.value = true;
 };
@@ -94,7 +98,7 @@ const handleSearch = (event) => {
             "
           >
             <h3>{{ airline.name }}</h3>
-            <p>#{{ airline.airlineID }}</p>
+            <p>#{{ airline.code }}{{ airline.airlineID }}</p>
           </div>
           <div
             class="airline-edit-button"
@@ -108,15 +112,10 @@ const handleSearch = (event) => {
           <select
             class="airline-status"
             v-model="airline.airlineStatus"
-            @change="
-              airlineStore.updateAirlineStatus(
-                airline.airlineID,
-                airline.airlineStatus
-              )
-            "
-          >
-            <option value="open">Open</option>
-            <option value="temporarily-closed">Temporarily Closed</option>
+            @change="onStatusChange(airline.airlineID, airline.airlineStatus)"
+            >
+            <option value="Open">Open</option>
+            <option value="Temporarily closed">Temporarily Closed</option>
           </select>
         </div>
 
@@ -154,13 +153,13 @@ const handleSearch = (event) => {
         <div class="card-section airline-icon-section" style="grid-area: icon">
           <div class="airline-plane-icon">
             <img
-              v-if="airline.airlineStatus === 'open'"
+              v-if="airline.airlineStatus === 'Open'"
               src="/management-pic/management-airline/airplane-active-icon.png"
               alt="Open Airline"
             />
-            <div v-else-if="airline.airlineStatus === 'temporarily-closed'">
+            <div v-else-if="airline.airlineStatus === 'Temporarily closed'">
               <div class="status-closed">
-                <p>Temporarily Close</p>
+                <p>Temporarily Closed</p>
               </div>
               <img
                 src="/management-pic/management-airline/airplane-inactive-icon.png"

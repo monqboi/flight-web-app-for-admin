@@ -6,59 +6,83 @@ const router = express.Router();
 // ------------- Aircraft -------------
 
 // Get all Aircrafts
-router.get("/aircraft", (req, res) => {
-    const query = "SELECT * FROM Aircraft";
-  
-    db.query(query, (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error retrieving aircraft");
-      }
-      res.json(results);
-    });
+router.get("/", async (req, res) => {
+  try {
+    const [rows] = await db.promise().query("SELECT * FROM Aircraft");
+    res.json(rows);
+  } catch (err) {
+    console.error("Error retrieving aircraft:", err);
+    res.status(500).send("Error retrieving aircraft");
+  }
 });
 
 // Get a single Aircraft by ID
-router.get("/:id", (req, res) => {
-    const aircraftID = req.params.id;
-    const query = "SELECT * FROM Aircraft WHERE AircraftID = ?";
-  
-    db.query(query, [aircraftID], (err, result) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error retrieving aircraft");
-      }
-      if (result.length === 0) {
-        return res.status(404).send("Aircraft not found");
-      }
-      res.json(result[0]);
-    });
+router.get("/:id", async (req, res) => {
+  const aircraftID = req.params.id;
+  try {
+    const [rows] = await db.promise().query("SELECT * FROM Aircraft WHERE AircraftID = ?", [aircraftID]);
+    if (rows.length === 0) {
+      return res.status(404).send("Aircraft not found");
+    }
+    res.json(rows[0]);
+  } catch (err) {
+    console.error("Error retrieving aircraft:", err);
+    res.status(500).send("Error retrieving aircraft");
+  }
 });
 
-// Update Aircraft status ('Available', 'Not Available')
-router.put("/aircraft/:id/status", (req, res) => {
+// Create new Aircraft
+router.post("/", async (req, res) => {
+  try {
+    const { model, capacity, airlineID, registrationNumber, aircraftStatus } = req.body;
+
+    const allowedStatuses = ["Available", "Not Available"];
+    if (!allowedStatuses.includes(aircraftStatus)) {
+      return res.status(400).send("Invalid status value");
+    }
+
+    const query = `
+      INSERT INTO Aircraft (Model, Capacity, AirlineID, RegistrationNumber, Status)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+    const values = [model, capacity, airlineID, registrationNumber, aircraftStatus];
+    const [results] = await db.promise().query(query, values);
+
+    res.status(201).json({ message: "Aircraft created", aircraftID: results.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error creating aircraft");
+  }
+});
+
+// Update Aircraft (all fields)
+router.put("/:id", async (req, res) => {
+  try {
     const aircraftID = req.params.id;
-    const { status } = req.body;
-  
-    // Ensure status sent is correct as the system supports.
-    //const allowedStatuses = ['Available', 'Not Available'];
-    //if (!allowedStatuses.includes(status)) {
-    //  return res.status(400).send("Invalid status value.");
-    //}
-  
+    const { model, capacity, airlineID, registrationNumber, aircraftStatus } = req.body;
+
+    const allowedStatuses = ["Available", "Not Available"];
+    if (!allowedStatuses.includes(aircraftStatus)) {
+      return res.status(400).send("Invalid status value");
+    }
+
     const query = `
       UPDATE Aircraft
-      SET Status = ?
+      SET Model = ?, Capacity = ?, AirlineID = ?, RegistrationNumber = ?, Status = ?
       WHERE AircraftID = ?
     `;
-  
-    db.query(query, [status, aircraftID], (err, results) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).send("Error updating aircraft status");
-      }
-      res.json({ message: "Aircraft status updated successfully" });
-    });
+    const values = [model, capacity, airlineID, registrationNumber, aircraftStatus, aircraftID];
+    const [results] = await db.promise().query(query, values);
+
+    if (results.affectedRows === 0) {
+      return res.status(404).send("Aircraft not found");
+    }
+
+    res.json({ message: "Aircraft updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating aircraft");
+  }
 });
 
 export default router;

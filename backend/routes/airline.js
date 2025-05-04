@@ -1,47 +1,54 @@
 import express from "express";
-import getDBConnection from "../db.js";
+import db from "../db.js";
 
 const router = express.Router();
 
 // ------------- Airline -------------
 
 // Get all Airlines
-router.get("/", (req, res) => {
-  const db = getDBConnection();
-  const query = "SELECT * FROM Airline";
+router.get("/", async (req, res) => {
+  const query = `SELECT 
+    AirlineID as airlineID,
+    Name as name,
+    AirlineNameShort as name_short,
+    Country as country,
+    Headquarters as headquarters,
+    Code as code,
+    ContactPrefix as contactPrefix,
+    ContactNumber as contactNumber,
+    AirlineStatus as airlineStatus,
+    AirlineColor as airlineColor,
+    AirlineImage as airlineImage
+  FROM Airline`;
 
-  db.query(query, (err, results) => {
-    db.end(); // Close connection everytime to prevent Connection lost
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Error retrieving airlines");
-    }
+  try {
+    const [results] = await db.query(query);
     res.json(results);
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error retrieving airlines");
+  }
 });
 
 // Get a single Airline by ID
-router.get("/:id", (req, res) => {
-  const db = getDBConnection();
+router.get("/:id", async (req, res) => {
   const airlineID = req.params.id;
   const query = "SELECT * FROM Airline WHERE AirlineID = ?";
 
-  db.query(query, [airlineID], (err, result) => {
-    db.end();
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Error retrieving airline");
-    }
+  try {
+    const [result] = await db.query(query, [airlineID]);
     if (result.length === 0) {
       return res.status(404).send("Airline not found");
     }
     res.json(result[0]);
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error retrieving airline");
+  }
 });
 
 // Create a new Airline
-router.post("/", (req, res) => {
-  const db = getDBConnection();
+router.post("/", async (req, res) => {
   console.log("Incoming airline payload:", req.body);
   const {
     name, // 'Singapore Airlines'
@@ -68,7 +75,7 @@ router.post("/", (req, res) => {
 
   const insertQuery = `
     INSERT INTO Airline 
-    (Name, AirlineNameShort, Code, ContactPrefix, ContactNumber, Country, Headquarters, AirlineStatus, AirlineColor, AirlineLogo)
+    (Name, AirlineNameShort, Code, ContactPrefix, ContactNumber, Country, Headquarters, AirlineStatus, AirlineColor, AirlineImage)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
 
@@ -78,29 +85,96 @@ router.post("/", (req, res) => {
     codeUpper, 
     contactPrefix, 
     contactNumber, 
-    country, 
+    country,  
     headquarters, 
     airlineStatus, 
     airlineColor, 
     airlineImage 
   ];
 
-  db.query(insertQuery, values, (err, results) => {
-    db.end();
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Error adding new airline");
-    }
-    console.log("Insert result:", results); 
+  try {
+    const [results] = await db.query(insertQuery, values);
     res.status(201).json({
       message: "Airline added successfully",
-      airlineID: results.insertId });
-  });
+      airlineID: results.insertId
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error adding new airline");
+  }
+});
+
+// Update full Airline data by ID
+router.put("/:id", async (req, res) => {
+  const airlineID = req.params.id;
+
+  const {
+    name,
+    name_short,
+    code,
+    contactPrefix,
+    contactNumber,
+    country,
+    headquarters,
+    airlineStatus,
+    airlineColor,
+    airlineImage,
+  } = req.body;
+
+  // Ensure name_short & code is Uppercase, and avoid whitespace issues
+  const name_shortUpper = (name_short || "").trim().toLowerCase();
+  const codeUpper = (code || "").trim().toUpperCase();
+  
+  // Ensure status sent is correct as the system supports.
+  //const allowedStatuses = ['Open', 'Temporarily closed'];
+  //if (!allowedStatuses.includes(airlineStatus)) {
+  //  return res.status(400).send("Invalid status value.");
+  //}
+
+  const query = `
+    UPDATE Airline 
+    SET 
+      Name = ?, 
+      AirlineNameShort = ?,
+      Code = ?, 
+      ContactPrefix = ?, 
+      ContactNumber = ?, 
+      Country = ?, 
+      Headquarters = ?, 
+      AirlineStatus = ?, 
+      AirlineColor = ?, 
+      AirlineImage = ?
+    WHERE AirlineID = ?
+  `;
+
+  const values = [
+    name,
+    name_shortUpper,
+    codeUpper,
+    contactPrefix,
+    contactNumber,
+    country,
+    headquarters,
+    airlineStatus,
+    airlineColor,
+    airlineImage,
+    airlineID,
+  ];
+
+  try {
+    const [results] = await db.query(query, values);
+    if (results.affectedRows === 0) {
+      return res.status(404).send("Airline not found");
+    }
+    res.json({ message: "Airline updated successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Database error when updating airline");
+  }
 });
 
 // Update Airline Status ('Open', 'Temporarily closed')
-router.put("/:id/status", (req, res) => {
-  const db = getDBConnection();
+router.put("/:id/status", async (req, res) => {
   const airlineID = req.params.id;
   const { airlineStatus } = req.body;
 
@@ -116,17 +190,16 @@ router.put("/:id/status", (req, res) => {
     WHERE AirlineID = ?
   `;
 
-  db.query(query, [airlineStatus, airlineID], (err, results) => {
-    db.end();
-    if (err) {
-      console.error(err);
-      return res.status(500).send("Database error when updating airline status");
-    }
+  try {
+    const [results] = await db.query(query, [airlineStatus, airlineID]);
     if (results.affectedRows === 0) {
       return res.status(404).send("Airline not found");
     }
     res.json({ message: "Airline status updated successfully" });
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Database error when updating airline status");
+  }
 });
 
 export default router;

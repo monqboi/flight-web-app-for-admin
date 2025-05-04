@@ -379,6 +379,8 @@ watch(status, (newStatus) => {
   <ModalAircraft
     :showAircraft="isShowAircraft"
     :aircraftID="selectedAircraftID"
+    :airlineID="airlineID"
+    formMode="edit"
     @close="isShowAircraft = false"
   ></ModalAircraft>
 

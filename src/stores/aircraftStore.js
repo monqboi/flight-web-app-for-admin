@@ -37,13 +37,28 @@ export const useAircraftStore = defineStore("aircraft", {
       }
     },
     addAircraft(newAircraft) {
+      const maxID = this.aircraft.reduce(
+        (max, aircraft) => Math.max(max, aircraft.aircraftID),
+        0
+      );
+      const newID = maxID + 1;
+
       const existingAircraft = this.aircraft.find(
-        (aircraft) => aircraft.aircraftID === newAircraft.aircraftID
+        (aircraft) =>
+          aircraft.registrationNumber === newAircraft.registrationNumber
       );
       if (!existingAircraft) {
-        this.aircraft.push(newAircraft);
+        this.aircraft.push({ aircraftID: newID, ...newAircraft });
       } else {
         console.error("Aircraft with this ID already exists.");
+      }
+    },
+    updateAircraft(aircraftID, updatedAircraft) {
+      const index = this.aircraft.findIndex(
+        (aircraft) => aircraft.aircraftID === aircraftID
+      );
+      if (index !== -1) {
+        this.aircraft[index] = { ...this.aircraft[index], ...updatedAircraft };
       }
     },
   },
