@@ -22,7 +22,6 @@ const emit = defineEmits(["addFlight", "close", "editFlight"]);
 const route = useRoute();
 const aircraftStore = useAircraftStore();
 const flightStore = useFlightStore();
-const isShowConfirmModal = ref(false);
 const airlineID = route.params.airlineID;
 
 const props = defineProps({
@@ -40,8 +39,16 @@ const props = defineProps({
   },
 });
 
+const isShowConfirmModal = ref(false);
+const aircrafts = ref([]);
+const loaded = ref(false);
+
 onMounted(() => {
+  loaded.value = false;
   aircraftStore.loadAircrafts();
+  aircrafts.value = aircraftStore.getAircraftsByAirlineID(airlineID);
+  loaded.value = true;
+  console.log("aircrafts", aircrafts.value);
 });
 
 watch(
@@ -57,9 +64,10 @@ watch(
   { immediate: true }
 );
 
-const aircrafts = computed(() => {
-  return aircraftStore.getAircraftsByAirlineID(airlineID) || [];
-});
+// const aircrafts = computed(() => {
+//   console.log("aircrafts", aircraftStore.getAircraftsByAirlineID(airlineID));
+//   return aircraftStore.getAircraftsByAirlineID(airlineID) || [];
+// });
 
 const flights = computed(() => {
   return flightStore.getAllFlights || [];
@@ -256,6 +264,13 @@ const handleAircraftSelection = (value) => {
   }
 };
 
+const handleAircraftAdded = (newAircraft) => {
+  console.log("New aircraft added:", newAircraft);
+  aircraftStore.loadAircrafts();
+  console.log("aircrafts", aircrafts.value);
+  aircrafts.value = aircraftStore.getAircraftsByAirlineID(airlineID);
+};
+
 watch(
   () => form.value.duration.stop,
   (newStopCount) => {
@@ -265,10 +280,16 @@ watch(
     }
   }
 );
+
+watch(
+  () => aircraftStore.loadAircrafts,
+  (newAircrafts) => {},
+  { deep: true }
+);
 </script>
 
 <template>
-  <Transition name="modal-container">
+  <Transition name="modal-container" v-if="loaded">
     <div v-if="showModal" class="modal-container" @click.self="closeModal">
       <div class="modal-content">
         <div>
@@ -406,6 +427,7 @@ watch(
                   "
                 >
                   <select
+                    :key="aircrafts.length"
                     v-model="form.aircraftID"
                     @change="handleAircraftSelection($event.target.value)"
                   >
@@ -433,6 +455,7 @@ watch(
                   <input
                     type="number"
                     placeholder="- -"
+                    min="0"
                     v-model="form.duration.time"
                   />
                 </div>
@@ -491,7 +514,10 @@ watch(
   <ModalAircraft
     v-if="showAircraftModal"
     :showAircraft="showAircraftModal"
+    :airlineID="airlineID"
+    formMode="add"
     @close="showAircraftModal = false"
+    @aircraftAdded="handleAircraftAdded"
   />
 </template>
 

@@ -8,7 +8,7 @@ import { object, string, number } from "zod";
 import ModalConfirm from "../ModalConfirm.vue";
 import Dropdown from "../Dropdown.vue";
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "aircraftAdded"]);
 const aircraftStore = useAircraftStore();
 const airlineStore = useAirlineStore();
 const showConfirmModal = ref(false);
@@ -18,6 +18,10 @@ const props = defineProps({
   showAircraft: {
     type: Boolean,
     default: false,
+  },
+  airlineID: {
+    type: String,
+    default: "",
   },
   aircraftID: {
     type: String,
@@ -29,9 +33,21 @@ const props = defineProps({
   },
 });
 
+console.log("airlineID", props.airlineID);
+
 onMounted(() => {
   aircraftStore.loadAircrafts();
   airlineStore.loadAirlines();
+
+  const airline = airlineStore.getAirlineByID(props.airlineID);
+
+  const selectedAirline = airlineStore.getAirlineByID(props.airlineID);
+  if (selectedAirline) {
+    form.value = {
+      ...form.value,
+      airline: selectedAirline.name,
+    };
+  }
 });
 
 const statusOptions = [
@@ -41,20 +57,27 @@ const statusOptions = [
 
 const formSchema = object({
   airline: string().min(1, "Airline is required"),
-  aircraftID: string().min(1, "Aircraft ID is required"),
-  capacity: number().min(1, "Capacity is required"),
-  model: string().min(1, "Model is required"),
-  registrationNumber: string().min(1, "Registration Number is required"),
+  capacity: number()
+    .min(1, "Capacity is required")
+    .refine((value) => value > 0, {
+      message: "Capacity must be greater than 0.",
+    }),
+  model: string()
+    .min(1, "Model is required")
+    .max(50, "Model must be less than 50 characters"),
+  registrationNumber: string()
+    .min(1, "Registration Number is required")
+    .max(20, "Registration Number must be less than 20 characters"),
   aircraftStatus: string().min(1, "Aircraft Status is required"),
 });
 
 const form = ref({
   airline: "",
-  aircraftID: "",
   capacity: 0,
   model: "",
   registrationNumber: "",
   aircraftStatus: "",
+  airlineID: props.airlineID,
 });
 
 // ดึงข้อมูลจาก store ตาม aircraftID ที่ส่งเข้ามา
@@ -64,18 +87,11 @@ watch(
     if (!newID) return;
 
     const aircraft = aircraftStore.getAircraftByID(newID);
-    let airlineNameShort = "";
-
-    if (aircraft?.airlineID) {
-      const airline = airlineStore.getAirlineByID(aircraft.airlineID);
-      airlineNameShort = airline?.name_short || "";
-    }
 
     if (aircraft) {
       form.value = {
         ...form.value,
         ...aircraft,
-        airline: airlineNameShort,
       };
     }
   },
@@ -90,20 +106,29 @@ const isFormValid = computed(() => {
 const handleClose = () => {
   confirmMode.value = "discard";
   showConfirmModal.value = true;
+  const aircraft = aircraftStore.getAircraftByID(props.aircraftID);
+
+  if (aircraft) {
+    form.value = {
+      ...form.value,
+      ...aircraft,
+    };
+  }
 };
 
 const confirmAddAircraft = () => {
-  if (isFormValid.value) {
-    confirmMode.value = "success";
-    showConfirmModal.value = true;
-  }
+  confirmMode.value = "success";
+  showConfirmModal.value = true;
+
+  // aircraftStore.updateAircraft(props.aircraftID, form.value);
 };
 
 const addAircraft = () => {
   if (props.formMode === "add") {
-    aircraftStore.addAircraft(form.value);
+    aircraftStore.addAircraft({ ...form.value });
+    emit("aircraftAdded", form.value);
   } else if (props.formMode === "edit") {
-    aircraftStore.updateAircraft(form.value);
+    aircraftStore.updateAircraft(props.aircraftID, form.value);
   }
   showConfirmModal.value = false;
   emit("close");
@@ -126,13 +151,6 @@ const confirmText = computed(() => {
   }
   return "";
 });
-
-watch(
-  () => showConfirmModal.value,
-  (newValue) => {
-    console.log("showConfirmModal", newValue);
-  }
-);
 </script>
 
 <template>
@@ -211,27 +229,25 @@ watch(
               <div
                 class="form-row"
                 style="
-                  grid-template-columns: 1fr 2fr;
+                  grid-template-columns: 1fr 1fr;
                   gap: 20px;
                   align-items: center;
                 "
               >
                 <label>Airline</label>
-                <label>AircraftID</label>
                 <label>Capacity</label>
               </div>
 
               <div
                 class="form-row inputs"
                 style="
-                  grid-template-columns: 1fr 2fr;
+                  grid-template-columns: 1fr 1fr;
                   gap: 20px;
                   align-items: center;
                 "
               >
-                <input type="text" v-model="form.airline" />
-                <input type="text" v-model="form.aircraftID" />
-                <input type="number" v-model="form.capacity" />
+                <input type="text" v-model="form.airline" disabled />
+                <input type="number" v-model="form.capacity" min="0" />
               </div>
 
               <div
@@ -532,6 +548,10 @@ input {
 input::placeholder {
   color: #a0b2c4;
   font-size: 14px;
+}
+
+input:disabled {
+  cursor: not-allowed;
 }
 
 .form-row:last-child input:first-child {

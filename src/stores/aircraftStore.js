@@ -38,12 +38,21 @@ export const useAircraftStore = defineStore("aircraft", {
     },
     addAircraft(newAircraft) {
       const existingAircraft = this.aircraft.find(
-        (aircraft) => aircraft.aircraftID === newAircraft.aircraftID
+        (aircraft) =>
+          aircraft.registrationNumber === newAircraft.registrationNumber
       );
       if (!existingAircraft) {
         this.aircraft.push(newAircraft);
       } else {
         console.error("Aircraft with this ID already exists.");
+      }
+    },
+    updateAircraft(aircraftID, updatedAircraft) {
+      const index = this.aircraft.findIndex(
+        (aircraft) => aircraft.aircraftID === aircraftID
+      );
+      if (index !== -1) {
+        this.aircraft[index] = { ...this.aircraft[index], ...updatedAircraft };
       }
     },
   },

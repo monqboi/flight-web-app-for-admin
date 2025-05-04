@@ -94,7 +94,7 @@ const handleSearch = (event) => {
             "
           >
             <h3>{{ airline.name }}</h3>
-            <p>#{{ airline.airlineID }}</p>
+            <p>#{{ airline.code }}{{ airline.airlineID }}</p>
           </div>
           <div
             class="airline-edit-button"
