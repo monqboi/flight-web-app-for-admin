@@ -1,4 +1,4 @@
-import mysql from 'mysql2';
+import mysql from "mysql2/promise";
 
 const pool = mysql.createPool({
   host: '8.tcp.ngrok.io',
@@ -11,4 +11,4 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-export default pool.promise();
+export default pool;

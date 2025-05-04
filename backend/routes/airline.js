@@ -122,7 +122,7 @@ router.put("/:id", async (req, res) => {
   } = req.body;
 
   // Ensure name_short & code is Uppercase, and avoid whitespace issues
-  const name_shortUpper = (name_short || "").trim().toLowerCase();
+  const name_shortUpper = (name_short || "").trim().toUpperCase();
   const codeUpper = (code || "").trim().toUpperCase();
   
   // Ensure status sent is correct as the system supports.

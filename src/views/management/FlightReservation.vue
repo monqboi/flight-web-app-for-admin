@@ -1,117 +1,120 @@
 <template>
-    <div class="layout">
-      <Sidebar />
-      <main class="main-content">
-        <!-- HEADER -->
-        <div class="flight-header">
-          <button class="back-button" @click="goBack">←</button>
-          <div class="flight-date-info">
-            <span class="date">Mar 09, 2025</span>
-            <div class="flight-route">
-              <img src="/src/assets/plane-fly.png" />
-              <span class="airport">BKK</span>
-              <span class="time">18:00</span>
-              <img src="/src/assets/fly-duration.png" class="flight-arrow" />
-              <img src="/src/assets/plane-land.png" />
-              <span class="airport">CNX</span>
-              <span class="time">18:00</span>
-            </div>
-          </div>
-          <div class="flight-mode-toggle">
-            <label class="toggle-label">Flight view mode</label>
-            <div class="view-switch">
-              <span :class="{ active: !toggleView }">Passenger</span>
-              <label class="switch">
-                <input type="checkbox" v-model="toggleView" @change="switchView">
-                <span class="slider round"></span>
-              </label>
-              <span :class="{ active: toggleView }">Reservation</span>
-            </div>
-          </div>
-          <div class="search-actions">
-            <input class="search-box" v-model="searchQuery" placeholder="🔍 Search User" />
-            <button class="add-btn" @click="openModal()">+ Add</button>
+  <div class="layout">
+    <Sidebar />
+    <main class="main-content">
+      <!-- HEADER -->
+      <div class="flight-header">
+        <button class="back-button" @click="goBack">←</button>
+        <div class="flight-date-info">
+          <span class="date">Mar 09, 2025</span>
+          <div class="flight-route">
+            <img src="/src/assets/plane-fly.png" />
+            <span class="airport">BKK</span>
+            <span class="time">18:00</span>
+            <img src="/src/assets/fly-duration.png" class="flight-arrow" />
+            <img src="/src/assets/plane-land.png" />
+            <span class="airport">CNX</span>
+            <span class="time">18:00</span>
           </div>
         </div>
-  
-        <!-- TABLE -->
-        <div class="payment-table">
-          <table class="passenger-table">
-            <thead>
-              <tr>
-                <th class="spacer-col"></th>
-                <th>User</th>
-                <th>Seat Number</th>
-                <th>Amount</th>
-                <th>Payment ID</th>
-                <th>Booking Date</th>
-                <th>Status</th>
-                <th>Action</th>
-                <th class="spacer-col"></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr class="ticket-row" v-for="(res, index) in filteredReservations" :key="res.id">
-                <td>{{ res.username }}<br><span class="small-id">#{{ res.userId }}</span></td>
-                <td>{{ res.seat }}</td>
-                <td>{{ res.amount }}</td>
-                <td>{{ res.paymentId }}</td>
-                <td>{{ res.bookingDate }}</td>
-                <td>
-                  <span
-                    class="status"
-                    :class="{
-                      success: res.status === 'Confirmed',
-                      failed: res.status === 'Cancelled',
-                      pending: res.status === 'Pending'
-                    }"
-                  >
-                    {{ res.status }}
-                  </span>
-                </td>
-                <td>
-                  <div class="action-buttons">
-                    <i class="fa fa-edit" @click="openModal(res, index)"></i>
-                    <font-awesome-icon icon="trash"  @click="deleteReservation(res.id)"title="Delete"
-                    class="action-icon" />
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="flight-mode-toggle">
+          <label class="toggle-label">Flight view mode</label>
+          <div class="view-switch">
+            <span :class="{ active: !toggleView }">Passenger</span>
+            <label class="switch">
+              <input type="checkbox" v-model="toggleView" @change="switchView">
+              <span class="slider round"></span>
+            </label>
+            <span :class="{ active: toggleView }">Reservation</span>
+          </div>
         </div>
-  
-        <!-- MODAL -->
-        <div v-if="showModal" class="modal">
-          <div class="modal-content user-form">
-            <h3>{{ editIndex !== null ? 'Edit Reservation' : 'Add Reservation' }}</h3>
-            <div class="form-row">
-              <input type="number" v-model="form.userId" placeholder="User ID" />
-              <input type="number" v-model="form.flightId" placeholder="Flight ID" />
-            </div>
+        <div class="search-actions">
+          <input class="search-box" v-model="searchQuery" placeholder="🔍 Search User" />
+          <button class="add-btn" @click="openModal()">+ Add</button>
+        </div>
+      </div>
 
-            <div class="form-row">
-              <select v-model="form.status">
-                <option disabled value="">Select Status</option>
-                <option>Confirmed</option>
-                <option>Canceled</option>
-                <option>Completed</option>
-              </select>
-              <input type="datetime-local" v-model="form.bookingDate" />
-            </div>
-            <div class="modal-actions">
-              <button class="save-btn" @click="saveReservation">Save ✔</button>
-              <button class="discard-btn" @click="closeModal">Discard ✖</button>
-            </div>
+      <!-- TABLE -->
+      <div class="payment-table">
+        <table class="passenger-table">
+          <thead>
+            <tr>
+              <th class="spacer-col"></th>
+              <th>User</th> <!-- OK -->
+              <td>{{ res.username }}<br><span class="small-id">#{{ res.userId }}</span></td>
+              <th>Seat Number</th>
+              <th>Amount</th>
+              <th>Payment ID</th>
+              <th>Booking Date</th>
+              <th>Status</th>
+              <th>Action</th>
+              <th class="spacer-col"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="ticket-row" v-for="(res, index) in filteredReservations" :key="res.id">
+              <td>{{ res.username }}<br><span class="small-id">#{{ res.userId }}</span></td>
+              <td>{{ res.seat }}</td>
+              <td>{{ res.amount }}</td>
+              <td>{{ res.paymentId }}</td>
+              <td>{{ res.bookingDate }}</td>
+              <td>
+                <span
+                  class="status"
+                  :class="{
+                    success: res.status === 'Confirmed',
+                    failed: res.status === 'Cancelled',
+                    pending: res.status === 'Pending'
+                  }"
+                >
+                  {{ res.status }}
+                </span>
+              </td>
+              <td>
+                <div class="action-buttons">
+                  <i class="fa fa-edit" @click="openModal(res, index)"></i>
+                  <font-awesome-icon icon="trash"  @click="deleteReservation(res.id)"title="Delete"
+                  class="action-icon" />
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- MODAL -->
+      <div v-if="showModal" class="modal">
+        <div class="modal-content user-form">
+          <h3>{{ editIndex !== null ? 'Edit Reservation' : 'Add Reservation' }}</h3>
+          <div class="form-row">
+            <input type="number" v-model="form.userId" placeholder="User ID" />
+            <input type="text" v-model="form.seat" placeholder="Seat Number" />
+            <input type="number" v-model="form.flightId" placeholder="Flight ID" />
+          </div>
+
+          <div class="form-row">
+            <select v-model="form.status">
+              <option disabled value="">Select Status</option>
+              <option>Confirmed</option>
+              <option>Canceled</option>
+              <option>Pending</option>
+            </select>
+            <input type="datetime-local" v-model="form.bookingDate" />
+          </div>
+          <div class="modal-actions">
+            <button class="save-btn" @click="saveReservation">Save ✔</button>
+            <button class="discard-btn" @click="closeModal">Discard ✖</button>
           </div>
         </div>
-      </main>
-    </div>
-  </template>
+      </div>
+    </main>
+  </div>
+</template>
   
   <script setup>
-  import { ref, computed } from 'vue'
-  import { useRouter, useRoute } from 'vue-router'
+  import { ref, computed, onMounted } from 'vue';
+  import { useRouter, useRoute } from 'vue-router';
+  import axios from 'axios';
   
   const router = useRouter()
   const route = useRoute()
@@ -122,15 +125,35 @@
   const form = ref({
     userId: '',
     flightId: '',
+    seat: '',
     status: '',
     bookingDate: ''
-  })
+  });
+    
   
-  const reservations = ref([
-    { username: 'inwza241', userId: 'USR001', seat: '01A', amount: 5000, paymentId: 'P1001', bookingDate: '2025-03-09', status: 'Confirmed' },
-    { username: 'inwza241', userId: 'USR002', seat: '02B', amount: 5000, paymentId: 'P1002', bookingDate: '2025-03-09', status: 'Pending' },
-    { username: 'inwza241',userId: 'USR003', seat: '03C', amount: 5000, paymentId: 'P1003', bookingDate: '2025-03-09', status: 'Cancelled' }
-  ])
+  const reservations = ref([]);
+  
+  async function loadReservations() {
+    try {
+      const res = await axios.get('/api/reservation');
+      reservations.value = res.data.map(r => ({
+        id: r.ReservationID,
+        userId: r.UserID,
+        username: r.Username,
+        seat: r.SeatNumber,
+        amount: r.Amount || '-',
+        paymentId: r.PaymentID || '-',
+        bookingDate: new Date(r.BookingDate).toLocaleString(), //bookingDate: r.BookingDate?.split('T')[0], (Cut time)
+        status: r.Status
+      }));
+    } catch (err) {
+      console.error('Failed to load reservations', err);
+    }
+  }
+  
+  onMounted(() => {
+    loadReservations();
+  });
   
   const filteredReservations = computed(() => {
     const q = searchQuery.value.toLowerCase()
@@ -146,7 +169,7 @@
       editIndex.value = index
     } else {
       form.value = {
-        id: Date.now(), reservationId: '', userId: '', seat: '', name: '', paymentId: '', bookingDate: '', status: 'Pending'
+        id: null, reservationId: '', userId: '', seat: '', name: '', paymentId: '', bookingDate: '', status: 'Pending'
       }
       editIndex.value = null
     }
@@ -157,24 +180,47 @@
     showModal.value = false
   }
   
-  function saveReservation() {
+  async function saveReservation() {
     if (!form.value.userId || !form.value.flightId || !form.value.status || !form.value.bookingDate) {
-      alert("Please fill in all fields.")
-      return
+      alert("Please fill in all fields.");
+      return;
     }
-    if (editIndex.value !== null) {
-      reservations.value.splice(editIndex.value, 1, { ...form.value })
-    } else {
-      reservations.value.push({ ...form.value })
+  
+    try {
+      const payload = {
+        userID: form.value.userId,
+        flightID: form.value.flightId,
+        status: form.value.status,
+        bookingDate: form.value.bookingDate,
+        seatNumber: form.value.seat, 
+      };
+  
+      if (editIndex.value !== null) {
+        await axios.put(`/api/reservation/${form.value.id}`, payload);
+      } else {
+        await axios.post('/api/reservation', payload);
+      }
+  
+      await loadReservations();
+      closeModal();
+    } catch (err) {
+      alert("Failed to save reservation");
+      console.error(err);
     }
-    closeModal()
   }
   
-  function deleteReservation(id) {
+  async function deleteReservation(id) {
     if (confirm('Delete this reservation?')) {
-      reservations.value = reservations.value.filter(r => r.id !== id)
+      try {
+        await axios.delete(`/api/reservation/${id}`);
+        await loadReservations();
+      } catch (err) {
+        alert('Failed to delete');
+        console.error(err);
+      }
     }
   }
+  
   
   function switchView() {
     if (!toggleView.value) {
@@ -260,41 +306,41 @@
     border-radius: 8px;
     border: 1px solid #ccc;
   }
-.modal-content.user-form {
+  .modal-content.user-form {
   width: 600px;
   background: white;
   border-radius: 12px;
   padding: 30px 40px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   font-family: "Inter", sans-serif;
-}
-
-.modal-content.user-form h3 {
+  }
+  
+  .modal-content.user-form h3 {
   font-size: 20px;
   margin-bottom: 20px;
   text-align: center;
-}
-
-.form-row {
+  }
+  
+  .form-row {
   display: flex;
   gap: 15px;
   margin-bottom: 15px;
-}
-
-.form-row input {
+  }
+  
+  .form-row input {
   flex: 1;
   padding: 10px 15px;
   font-size: 14px;
   border-radius: 6px;
   border: 1px solid #ccc;
-}
-
-.modal-actions {
+  }
+  
+  .modal-actions {
   display: flex;
   justify-content: center;
   gap: 20px;
   margin-top: 20px;
-}
+  }
   .save-btn, .discard-btn {
     padding: 10px 25px; font-size: 14px; border: none;
     border-radius: 6px; font-weight: bold; cursor: pointer;
@@ -317,21 +363,21 @@
     cursor: pointer;
   }
   
-
+  
   .switch {
   position: relative;
   display: inline-block;
   width: 44px;
   height: 24px;
-}
-
-.switch input {
+  }
+  
+  .switch input {
   opacity: 0;
   width: 0;
   height: 0;
-}
-
-.slider {
+  }
+  
+  .slider {
   position: absolute;
   cursor: pointer;
   top: 0;
@@ -341,9 +387,9 @@
   background-color: #3e7ca3;
   transition: 0.4s;
   border-radius: 34px;
-}
-
-.slider:before {
+  }
+  
+  .slider:before {
   position: absolute;
   content: "";
   height: 18px;
@@ -353,17 +399,14 @@
   background-color: white;
   transition: 0.4s;
   border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #3e7ca3;
-}
-
-input:checked + .slider:before {
-  transform: translateX(20px);
-}
-
-
-
-</style>
+  }
   
+  input:checked + .slider {
+  background-color: #3e7ca3;
+  }
+  
+  input:checked + .slider:before {
+  transform: translateX(20px);
+  }
+  
+  </style>

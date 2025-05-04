@@ -11,12 +11,13 @@ export const useFlightStore = defineStore("flight", {
   getters: {
     getAllFlights: (state) => state.flights,
     getFlightsByAirlineId: (state) => (airlineID) => {
-      const trimmedID = airlineID.trim().toLowerCase();
+      if (!airlineID) return [];
+      const numericID = Number(airlineID);
       const query = state.searchQuery;
       const selectedStatus = state.selectedFlightStatus;
-
+    
       return state.flights.filter((flight) => {
-        const matchAirlineID = String(flight.airlineID).toLowerCase() === trimmedID;
+        const matchAirlineID = Number(flight.airlineID) === numericID;
         const matchQuery = !query || String(flight.flightID).includes(query);
         const matchStatus = !selectedStatus || selectedStatus === "all" || flight.flightStatus === selectedStatus;
         return matchAirlineID && matchQuery && matchStatus;

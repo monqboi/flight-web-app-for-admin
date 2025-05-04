@@ -121,15 +121,19 @@ const confirmAddAircraft = () => {
   // aircraftStore.updateAircraft(props.aircraftID, form.value);
 };
 
-const addAircraft = () => {
-  if (props.formMode === "add") {
-    aircraftStore.addAircraft({ ...form.value });
-    emit("aircraftAdded", form.value);
-  } else if (props.formMode === "edit") {
-    aircraftStore.updateAircraft(props.aircraftID, form.value);
+const addAircraft = async () => {
+  try {
+    if (props.formMode === "add") {
+      await aircraftStore.addAircraft({ ...form.value });
+      emit("aircraftAdded", form.value);
+    } else if (props.formMode === "edit") {
+      await aircraftStore.updateAircraft(props.aircraftID, form.value);
+    }
+    showConfirmModal.value = false;
+    emit("close");
+  } catch (error) {
+    console.error("Failed to save aircraft:", error);
   }
-  showConfirmModal.value = false;
-  emit("close");
 };
 
 const closeModal = () => {

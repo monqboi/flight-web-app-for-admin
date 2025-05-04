@@ -8,7 +8,7 @@ const router = express.Router();
 // Get all Aircrafts
 router.get("/", async (req, res) => {
   try {
-    const [rows] = await db.promise().query("SELECT * FROM Aircraft");
+    const [rows] = await db.query("SELECT * FROM Aircraft");
     res.json(rows);
   } catch (err) {
     console.error("Error retrieving aircraft:", err);
@@ -16,11 +16,11 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get a single Aircraft by ID
+// Get one Aircraft
 router.get("/:id", async (req, res) => {
   const aircraftID = req.params.id;
   try {
-    const [rows] = await db.promise().query("SELECT * FROM Aircraft WHERE AircraftID = ?", [aircraftID]);
+    const [rows] = await db.query("SELECT * FROM Aircraft WHERE AircraftID = ?", [aircraftID]);
     if (rows.length === 0) {
       return res.status(404).send("Aircraft not found");
     }
@@ -46,7 +46,7 @@ router.post("/", async (req, res) => {
       VALUES (?, ?, ?, ?, ?)
     `;
     const values = [model, capacity, airlineID, registrationNumber, aircraftStatus];
-    const [results] = await db.promise().query(query, values);
+    const [results] = await db.query(query, values);
 
     res.status(201).json({ message: "Aircraft created", aircraftID: results.insertId });
   } catch (err) {
@@ -55,7 +55,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// Update Aircraft (all fields)
+// Update Aircraft
 router.put("/:id", async (req, res) => {
   try {
     const aircraftID = req.params.id;
@@ -72,7 +72,7 @@ router.put("/:id", async (req, res) => {
       WHERE AircraftID = ?
     `;
     const values = [model, capacity, airlineID, registrationNumber, aircraftStatus, aircraftID];
-    const [results] = await db.promise().query(query, values);
+    const [results] = await db.query(query, values);
 
     if (results.affectedRows === 0) {
       return res.status(404).send("Aircraft not found");

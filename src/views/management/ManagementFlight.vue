@@ -53,10 +53,9 @@ const selectedAircraftID = ref("");
 const selectedFlightID = ref(0);
 const airlineID = route.params.airlineID;
 
-onMounted(() => {
-  flightStore.loadFlights();
-  aircraftStore.loadAircrafts();
-  // reset ค่า query เเละ status ของ flightStore
+onMounted(async () => {
+  await flightStore.loadFlights()
+  await aircraftStore.loadAircrafts();
   flightStore.setSelectedStatus(null);
   flightStore.setSearchQuery("");
 });
@@ -70,6 +69,12 @@ const paginatedFlights = ref([]);
 const updatePaginatedFlights = (flights) => {
   paginatedFlights.value = flights;
 };
+
+/*
+const filteredFlights = computed(() => {
+  return flightStore.getFlightsByAirlineId(airlineID);
+});
+*/
 
 const addFlight = (newFlight) => {
   flightStore.addFlight(newFlight);
@@ -372,8 +377,10 @@ watch(status, (newStatus) => {
           </div>
         </div>
       </div>
-
-      <FlightPagination @update:paginatedData="updatePaginatedFlights" />
+      <!-- :flights="filteredFlights" -->
+      <FlightPagination
+        @update:paginatedData="updatePaginatedFlights"
+      />
     </template>
   </ManagementOverview>
   <ModalAircraft

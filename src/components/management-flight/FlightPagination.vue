@@ -7,11 +7,21 @@ const emit = defineEmits(["update:paginatedData"]);
 const route = useRoute();
 const airlineID = route.params.airlineID;
 const flightStore = useFlightStore();
+const flightData = computed(() => {
+  if (!airlineID) return [];
+  return flightStore.getFlightsByAirlineId(airlineID);
+});
 const itemsPerPage = 6;
 const currentPage = ref(1);
 
-// ได้ข้อมูล flight ของ airlineID ที่เลือกจาก route params
-const flightData = computed(() => flightStore.getFlightsByAirlineId(airlineID));
+/*
+defineProps({
+  flights: {
+    type: Array,
+    required: true,
+  },
+});
+*/
 
 onMounted(async () => {
   await flightStore.loadFlights(); 
@@ -31,6 +41,10 @@ watch(
   },
   { deep: true }
 );
+
+watch(currentPage, () => {
+  emit("update:paginatedData", paginatedFlights.value);
+});
 
 //  คำนวณจำนวนหน้าทั้งหมด = จำนวนเที่ยวบิน ÷ จำนวนรายการต่อหน้า
 //  flightData.value.length = 12, itemsPerPage = 6, totalPages = 2
