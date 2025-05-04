@@ -1,19 +1,38 @@
 <script setup>
-import { ref, defineProps, defineEmits, computed, onBeforeUnmount } from "vue";
+import {
+  ref,
+  defineProps,
+  defineEmits,
+  computed,
+  watch,
+  onBeforeUnmount,
+} from "vue";
+import { object, string } from "zod";
 import ModalConfirm from "../ModalConfirm.vue";
 import Dropdown from "@/components/Dropdown.vue";
+import { useAirlineStore } from "@/stores/airlineStore";
 
-const emit = defineEmits(["addAirline", "close"]);
+const airlineStore = useAirlineStore();
+
+const emit = defineEmits(["close"]);
 const isShowConfirmModal = ref(false);
 
 const showConfirmAddFlight = () => {
   isShowConfirmModal.value = true;
 };
 
-defineProps({
+const { isShowModalAddAirline, airlineID, formMode } = defineProps({
   isShowModalAddAirline: {
     type: Boolean,
     default: false,
+  },
+  airlineID: {
+    type: String,
+    default: null,
+  },
+  formMode: {
+    type: String,
+    default: "",
   },
 });
 
@@ -24,10 +43,27 @@ const statusOptions = [
   { value: "Temporarily closed",label: "Temporarily closed", class: "temporarily-closed" },
 ];
 
+const formSchema = object({
+  name: string()
+    .min(1, "Airline name is required")
+    .max(100, "Airline name must not exceed 100 characters"),
+  code: string()
+    .min(1, "Code is required")
+    .max(10, "Code must not exceed 10 characters"),
+  contactPrefix: string().min(1, "Contact prefix is required"),
+  contactNumber: string().min(10, "Contact number is invalid"),
+  country: string()
+    .min(1, "Country is required")
+    .max(50, "Country must not exceed 50 characters"),
+  headquarters: string().min(1, "Headquarters is required"),
+  airlineImage: string().nullable().optional(),
+  airlineStatus: string().min(1, "Airline status is required"),
+  airlineColor: string().optional(),
+});
+
 // form data
 const form = ref({
   name: "",
-  name_short: "",
   code: "",
   contactPrefix: "",
   contactNumber: "",
@@ -41,6 +77,7 @@ const form = ref({
 const isFormValid = computed(() => {
   const f = form.value;
   return (
+    f.airlineID &&
     f.name &&
     f.name_short &&
     f.code &&
@@ -66,8 +103,12 @@ const discardAddAirline = () => {
 };
 
 const addAirline = () => {
-  const airlineData = { ...form.value };
-  emit("addAirline", airlineData);
+  if (formMode === "edit") {
+    airlineStore.updateAirline(airlineID, { ...form.value });
+  } else {
+    airlineStore.addAirline({ ...form.value });
+  }
+
   closeModal();
 };
 
@@ -126,6 +167,32 @@ const handleImageUpload = (event) => {
 
 onBeforeUnmount(() => {
   uploadInputRef.value = null;
+});
+
+const modalTitle = computed(() =>
+  airlineID && airlineID.trim() !== ""
+    ? "Edit Airline Details"
+    : "Add Airline Details"
+);
+
+watch(
+  () => airlineID,
+  (newAirlineID) => {
+    if (newAirlineID) {
+      const selectedAirline = airlineStore.getAirlineByID(newAirlineID);
+      if (selectedAirline) {
+        form.value = { ...selectedAirline };
+      }
+    } else {
+      // resetForm();
+    }
+  },
+  { immediate: true }
+);
+
+const selecedtedAirline = computed(() => {
+  console.log("selecedtedAirline", airlineStore.getAirlineByID(airlineID));
+  return airlineStore.getAirlineByID(airlineID);
 });
 </script>
 
@@ -190,7 +257,7 @@ onBeforeUnmount(() => {
                   </svg>
                 </div>
               </div>
-              <h2>Add Airline Details</h2>
+              <h2>{{ modalTitle }}</h2>
               <Dropdown
                 v-model="form.airlineStatus"
                 :statusOptions="statusOptions"
@@ -243,7 +310,7 @@ onBeforeUnmount(() => {
                 <div
                   class="form-row"
                   style="
-                    grid-template-columns: 0.5fr 1fr 1fr;
+                    grid-template-columns: 1fr 1fr;
                     gap: 20px;
                     align-items: center;
                   "
@@ -255,7 +322,7 @@ onBeforeUnmount(() => {
                 <div
                   class="form-row inputs"
                   style="
-                    grid-template-columns: 0.5fr 1fr 1fr;
+                    grid-template-columns: 1fr 1fr;
                     gap: 20px;
                     align-items: center;
                   "
@@ -308,12 +375,11 @@ onBeforeUnmount(() => {
                 <div
                   class="form-row"
                   style="
-                    grid-template-columns: 0.8fr 1fr 2fr;
+                    grid-template-columns: 1fr 2fr;
                     gap: 20px;
                     align-items: center;
                   "
                 >
-                  <label>Name Short</label>
                   <label>Airline Color</label>
                   <label>Headquarters</label>
                 </div>
@@ -321,16 +387,11 @@ onBeforeUnmount(() => {
                 <div
                   class="form-row inputs"
                   style="
-                    grid-template-columns: 0.8fr 1fr 2fr;
+                    grid-template-columns: 1fr 2fr;
                     gap: 20px;
                     align-items: center;
                   "
                 >
-                  <input
-                    type="text"
-                    placeholder="- - -"
-                    v-model="form.name_short"
-                  />
                   <input
                     type="color"
                     v-model="form.airlineColor"

@@ -182,6 +182,10 @@ function openEdit(payment) {
 }
 
 function savePayment() {
+  if (form.amount <= 0) {
+    alert("Amount must be a positive number.");
+    return;
+  }
   if (!form.id) return alert('Please enter a Payment ID');
 
   const duplicate = payments.find(p => p.id === form.id);

@@ -23,14 +23,15 @@ export const useAirlineStore = defineStore("airline", {
   },
 
   actions: {
-    // Load Airline from backend
-    async loadAirlines() {
-      try {
-        const res = await axios.get("/api/airline");
-        this.airlines = res.data;
-      } catch (err) {
-        console.error("Failed to load airlines:", err);
-      }
+    loadAirlines() {
+      this.airlines = airlineData;
+    },
+    addAirline(airline) {
+      this.airlines.push(airline);
+    },
+    setSearchQuery(query) {
+      const trimmedQuery = query.trim().toLowerCase();
+      this.searchQuery = trimmedQuery;
     },
 
     // Add Airline to backend
