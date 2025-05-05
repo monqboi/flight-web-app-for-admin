@@ -17,7 +17,6 @@ router.get("/", async (req, res) => {
         p.Middlename,
         p.Lastname,
         p.Nationality,
-        p.BirthDate,
         p.PassportNumber,
         p.Address,
         u.Username,
@@ -38,7 +37,6 @@ router.get("/", async (req, res) => {
       username: row.Username,
       fullname: `${row.Firstname} ${row.Middlename} ${row.Lastname}`.replace(/\s+/g, ' ').trim(),
       nationality: row.Nationality,
-      birth: row.BirthDate,
       passport: row.PassportNumber,
       address: row.Address
     })));
@@ -52,15 +50,15 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   const {
     reservationId, seatID, firstName, middleName, lastName,
-    nationality, birth, passport, address
+    nationality, passport, address
   } = req.body;
 
   try {
     const [result] = await db.query(`
       INSERT INTO Passenger 
-      (ReservationID, SeatID, Firstname, Middlename, Lastname, Nationality, BirthDate, PassportNumber, Address)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [reservationId, seatID, firstName, middleName, lastName, nationality, birth, passport, address]);
+      (ReservationID, SeatID, Firstname, Middlename, Lastname, Nationality, PassportNumber, Address)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [reservationId, seatID, firstName, middleName, lastName, nationality, passport, address]);
 
     res.status(201).json({ message: "Passenger added", id: result.insertId });
   } catch (err) {
@@ -74,16 +72,16 @@ router.put("/:id", async (req, res) => {
   const passengerID = req.params.id;
   const {
     reservationId, seatID, firstName, middleName, lastName,
-    nationality, birth, passport, address
+    nationality, passport, address
   } = req.body;
 
   try {
     await db.query(`
       UPDATE Passenger SET
         ReservationID = ?, SeatID = ?, Firstname = ?, Middlename = ?, Lastname = ?, 
-        Nationality = ?, BirthDate = ?, PassportNumber = ?, Address = ?
+        Nationality = ?, PassportNumber = ?, Address = ?
       WHERE PassengerID = ?
-    `, [reservationId, seatID, firstName, middleName, lastName, nationality, birth, passport, address, passengerID]);
+    `, [reservationId, seatID, firstName, middleName, lastName, nationality, passport, address, passengerID]);
 
     res.json({ message: "Passenger updated" });
   } catch (err) {

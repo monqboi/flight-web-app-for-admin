@@ -114,6 +114,7 @@ const route = useRoute()
 const router = useRouter()
 const flightID = route.params.flightID;
 const airlineID = route.params.airlineID;
+const validReservations = ref([]);
 
 const toggleView = ref(false)
 const searchQuery = ref('')
@@ -182,27 +183,35 @@ if (toggleView.value) {
 }
 
 
-function openModal(p = null, idx = null) {
-  if (p) {
-    isEditing.value = true
-    editingIndex.value = idx
-    form.value = { ...p }
-  } else {
-    isEditing.value = false
-    editingIndex.value = null
-    form.value = {
-      reservationId: '',     // ✅ ใช้เพื่อเชื่อมกับ user
-      seat: '',
-      firstName: '',
-      middleName: '',
-      lastName: '',
-      nationality: '',
-      birth: '',
-      passport: '',
-      address: ''
+async function openModal(p = null, idx = null) {
+  try {
+    const res = await axios.get('/api/reservation?paidOnly=true');
+    validReservations.value = res.data;
+
+    if (p) {
+      isEditing.value = true;
+      editingIndex.value = idx;
+      form.value = { ...p };
+    } else {
+      isEditing.value = false;
+      editingIndex.value = null;
+      form.value = {
+        reservationId: '',
+        seat: '',
+        firstName: '',
+        middleName: '',
+        lastName: '',
+        nationality: '',
+        birth: '',
+        passport: '',
+        address: ''
+      };
     }
+
+    showModal.value = true;
+  } catch (err) {
+    console.error('Failed to load valid reservations:', err);
   }
-  showModal.value = true
 }
 
 function closeModal() {
@@ -210,29 +219,40 @@ function closeModal() {
 }
 
 async function savePassenger() {
-  const payload = {
-    reservationId: form.value.reservationId,
-    seatID: form.value.seat,
-    firstName: form.value.firstName,
-    middleName: form.value.middleName,
-    lastName: form.value.lastName,
-    nationality: form.value.nationality,
-    birth: form.value.birth,
-    passport: form.value.passport,
-    address: form.value.address
-  };
-
   try {
-    if (isEditing.value && editingIndex.value !== null) {
-      await axios.put(`/api/passenger/${form.value.id}`, payload)
-    } else {
-      await axios.post('/api/passenger', payload)
+    // Get Payment Status of Reservation
+    const reservationId = form.value.reservationId;
+    const res = await axios.get(`/api/reservation/${reservationId}`);
+    const reservation = res.data;
+
+    if (!reservation || reservation.paymentStatus !== 'Successful') {
+      alert('Cannot add passenger. Payment not completed for this reservation.');
+      return;
     }
-    await loadPassengers()
-    closeModal()
+
+    // Proceed to save passenger
+    const payload = {
+      reservationId: form.value.reservationId,
+      seatID: form.value.seat,
+      firstName: form.value.firstName,
+      middleName: form.value.middleName,
+      lastName: form.value.lastName,
+      nationality: form.value.nationality,
+      birth: form.value.birth,
+      passport: form.value.passport,
+      address: form.value.address
+    };
+
+    if (isEditing.value && editingIndex.value !== null) {
+      await axios.put(`/api/passenger/${form.value.id}`, payload);
+    } else {
+      await axios.post('/api/passenger', payload);
+    }
+    await loadPassengers();
+    closeModal();
   } catch (err) {
-    alert('Error saving passenger')
-    console.error(err)
+    alert('Error saving passenger');
+    console.error(err);
   }
 }
 

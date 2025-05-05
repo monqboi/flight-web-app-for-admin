@@ -30,23 +30,6 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get a single Reservation by ID
-router.get("/:id", async (req, res) => {
-  try {
-    const [result] = await db.query(
-      "SELECT * FROM Reservation WHERE ReservationID = ?",
-      [req.params.id]
-    );
-    if (result.length === 0) {
-      return res.status(404).send("Reservation not found");
-    }
-    res.json(result[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error retrieving reservation");
-  }
-});
-
 // Get full detail of a Reservation by ID (with User + Seat + Flight + Payment)
 router.get("/:id/full", async (req, res) => {
   try {
@@ -78,6 +61,10 @@ router.get("/:id/full", async (req, res) => {
       WHERE r.ReservationID = ?
     `, [req.params.id]);
 
+    if (!userID || !flightID || !seatNumber || !status || !bookingDate) {
+      return res.status(400).send("Missing required reservation fields");
+    }
+    
     if (results.length === 0) {
       return res.status(404).send("Reservation not found");
     }
@@ -118,6 +105,49 @@ router.get("/:id/full", async (req, res) => {
   }
 });
 
+// Get a Payment Status by ID
+router.get('/:id', async (req, res) => {
+  const reservationID = req.params.id;
+  try {
+    const [rows] = await db.query(`
+      SELECT r.*, p.Status as paymentStatus
+      FROM Reservation r
+      LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
+      WHERE r.ReservationID = ?`, [reservationID]);
+
+    if (rows.length === 0) return res.status(404).json({ error: 'Reservation not found' });
+
+    res.json(rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// GET /api/reservation?paidOnly=true
+router.get('/', async (req, res) => {
+  try {
+    const { paidOnly } = req.query;
+
+    let sql = `
+      SELECT r.ReservationID, r.SeatID, r.UserID, r.FlightID, r.Status, r.BookingDate,
+             p.Status as PaymentStatus
+      FROM Reservation r
+      LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
+    `;
+
+    if (paidOnly === 'true') {
+      sql += ` WHERE p.Status = 'Successful' `;
+    }
+
+    const [rows] = await db.query(sql);
+    res.json(rows);
+  } catch (err) {
+    console.error('Error fetching reservations:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Create a new Reservation
 router.post("/", async (req, res) => {
   try {
@@ -141,7 +171,7 @@ router.post("/", async (req, res) => {
 
     // Get seat ID
     const [seatResult] = await db.query(
-      "SELECT SeatID FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Availability = 'Yes'",
+      "SELECT SeatID FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Available = 'Yes'",
       [seatNumber, flightID]
     );
     if (seatResult.length === 0) {
@@ -156,8 +186,8 @@ router.post("/", async (req, res) => {
       [userID, flightID, seatID, status, bookingDate]
     );
 
-    // Update seat availability
-    await db.query("UPDATE Seat SET Availability = 'No' WHERE SeatID = ? AND FlightID = ?", [seatID, flightID]);
+    // Update seat Available
+    await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ? AND FlightID = ?", [seatID, flightID]);
 
     res.status(201).json({
       message: "Reservation created successfully",
@@ -203,7 +233,7 @@ router.put("/:id", async (req, res) => {
 
     // Find new Seat
     const [seatResult] = await db.query(
-      "SELECT SeatID FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Availability = 'Yes'",
+      "SELECT SeatID FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Available = 'Yes'",
       [seatNumber, flightID]
     );
     if (seatResult.length === 0) {
@@ -225,9 +255,9 @@ router.put("/:id", async (req, res) => {
       [userID, flightID, newSeatID, status, bookingDate, reservationID]
     );
 
-    // Update seat availability
-    await db.query("UPDATE Seat SET Availability = 'No' WHERE SeatID = ?", [newSeatID]);
-    await db.query("UPDATE Seat SET Availability = 'Yes' WHERE SeatID = ?", [oldSeatID]);
+    // Update seat Available
+    await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ?", [newSeatID]);
+    await db.query("UPDATE Seat SET Available = 'Yes' WHERE SeatID = ?", [oldSeatID]);
 
     res.json({ message: "Reservation updated successfully" });
   } catch (err) {

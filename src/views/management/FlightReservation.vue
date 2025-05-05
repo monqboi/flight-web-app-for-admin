@@ -1,6 +1,118 @@
+<script setup>
+import { useReservationStore } from '@/stores/reservationStore'
+import { ref, computed, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+
+const router = useRouter()
+const route = useRoute()
+const toggleView = ref(true)
+const searchQuery = ref('')
+const showModal = ref(false)
+const editIndex = ref(null)
+
+const reservationStore = useReservationStore()
+
+const form = ref({
+  userId: '',
+  flightId: '',
+  seat: '',
+  status: '',
+  bookingDate: ''
+})
+
+onMounted(async () => {
+  await reservationStore.loadReservations()
+})
+
+const reservations = computed(() =>
+  reservationStore.reservations.map(r => ({
+    id: r.ReservationID,
+    userId: r.UserID,
+    username: r.Username,
+    seat: r.SeatNumber,
+    amount: r.Amount || '-',
+    paymentId: r.PaymentID || '-',
+    bookingDate: new Date(r.BookingDate).toLocaleString(),
+    status: r.Status
+  }))
+)
+
+const filteredReservations = computed(() => {
+  const q = searchQuery.value.toLowerCase()
+  return reservations.value.filter(r =>
+    r.userId.toString().includes(q) ||
+    r.status.toLowerCase().includes(q)
+  )
+})
+
+function openModal(res = null, index = null) {
+  if (res) {
+    form.value = { ...res }
+    editIndex.value = index
+  } else {
+    form.value = {
+      id: null, reservationId: '', userId: '', seat: '', name: '', paymentId: '', bookingDate: '', status: 'Pending'
+    }
+    editIndex.value = null
+  }
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
+}
+
+async function saveReservation() {
+  if (!form.value.userId || !form.value.flightId || !form.value.status || !form.value.bookingDate) {
+    alert("Please fill in all fields.");
+    return;
+  }
+
+  const payload = {
+    userID: form.value.userId,
+    flightID: form.value.flightId,
+    status: form.value.status,
+    bookingDate: form.value.bookingDate,
+    seatNumber: form.value.seat
+  };
+
+  try {
+    if (editIndex.value !== null) {
+      await reservationStore.updateReservation(form.value.id, payload);
+    } else {
+      await reservationStore.createReservation(payload);
+    }
+    closeModal();
+  } catch (err) {
+    alert("Failed to save reservation");
+    console.error(err);
+  }
+}
+
+async function deleteReservation(id) {
+  if (confirm('Delete this reservation?')) {
+    try {
+      await reservationStore.deleteReservation(id);
+    } catch (err) {
+      alert('Failed to delete');
+      console.error(err);
+    }
+  }
+}
+
+function switchView() {
+  if (!toggleView.value) {
+    router.push({ name: 'PassengerManagement', params: { flightId: route.params.flightId, airlineID: route.params.airlineID } })
+  }
+}
+
+function goBack() {
+  router.back()
+}
+</script>
+
 <template>
   <div class="layout">
-    <Sidebar />
     <main class="main-content">
       <!-- HEADER -->
       <div class="flight-header">
@@ -40,8 +152,7 @@
           <thead>
             <tr>
               <th class="spacer-col"></th>
-              <th>User</th> <!-- OK -->
-              <td>{{ res.username }}<br><span class="small-id">#{{ res.userId }}</span></td>
+              <th>User</th>
               <th>Seat Number</th>
               <th>Amount</th>
               <th>Payment ID</th>
@@ -110,129 +221,6 @@
     </main>
   </div>
 </template>
-  
-  <script setup>
-  import { ref, computed, onMounted } from 'vue';
-  import { useRouter, useRoute } from 'vue-router';
-  import axios from 'axios';
-  
-  const router = useRouter()
-  const route = useRoute()
-  const toggleView = ref(true)
-  const searchQuery = ref('')
-  const showModal = ref(false)
-  const editIndex = ref(null)
-  const form = ref({
-    userId: '',
-    flightId: '',
-    seat: '',
-    status: '',
-    bookingDate: ''
-  });
-    
-  
-  const reservations = ref([]);
-  
-  async function loadReservations() {
-    try {
-      const res = await axios.get('/api/reservation');
-      reservations.value = res.data.map(r => ({
-        id: r.ReservationID,
-        userId: r.UserID,
-        username: r.Username,
-        seat: r.SeatNumber,
-        amount: r.Amount || '-',
-        paymentId: r.PaymentID || '-',
-        bookingDate: new Date(r.BookingDate).toLocaleString(), //bookingDate: r.BookingDate?.split('T')[0], (Cut time)
-        status: r.Status
-      }));
-    } catch (err) {
-      console.error('Failed to load reservations', err);
-    }
-  }
-  
-  onMounted(() => {
-    loadReservations();
-  });
-  
-  const filteredReservations = computed(() => {
-    const q = searchQuery.value.toLowerCase()
-    return reservations.value.filter(r =>
-    r.userId.toString().includes(q) ||
-    r.status.toLowerCase().includes(q)
-    )
-  })
-  
-  function openModal(res = null, index = null) {
-    if (res) {
-      form.value = { ...res }
-      editIndex.value = index
-    } else {
-      form.value = {
-        id: null, reservationId: '', userId: '', seat: '', name: '', paymentId: '', bookingDate: '', status: 'Pending'
-      }
-      editIndex.value = null
-    }
-    showModal.value = true
-  }
-  
-  function closeModal() {
-    showModal.value = false
-  }
-  
-  async function saveReservation() {
-    if (!form.value.userId || !form.value.flightId || !form.value.status || !form.value.bookingDate) {
-      alert("Please fill in all fields.");
-      return;
-    }
-  
-    try {
-      const payload = {
-        userID: form.value.userId,
-        flightID: form.value.flightId,
-        status: form.value.status,
-        bookingDate: form.value.bookingDate,
-        seatNumber: form.value.seat, 
-      };
-  
-      if (editIndex.value !== null) {
-        await axios.put(`/api/reservation/${form.value.id}`, payload);
-      } else {
-        await axios.post('/api/reservation', payload);
-      }
-  
-      await loadReservations();
-      closeModal();
-    } catch (err) {
-      alert("Failed to save reservation");
-      console.error(err);
-    }
-  }
-  
-  async function deleteReservation(id) {
-    if (confirm('Delete this reservation?')) {
-      try {
-        await axios.delete(`/api/reservation/${id}`);
-        await loadReservations();
-      } catch (err) {
-        alert('Failed to delete');
-        console.error(err);
-      }
-    }
-  }
-  
-  
-  function switchView() {
-    if (!toggleView.value) {
-      router.push({ name: 'PassengerManagement', params: { flightId: route.params.flightId, airlineID: route.params.airlineID } })
-    }
-  }
-  
-  function goBack() {
-    router.back()
-  }
-  </script>
-  
   
   <style scoped>
   
