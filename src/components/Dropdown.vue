@@ -1,11 +1,8 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 
+const modelValue = defineModel(); // <-- bind v-model ได้โดยตรง
 const props = defineProps({
-  modelValue: {
-    type: [String, Number, Boolean, Object, null],
-    required: true,
-  },
   statusOptions: {
     type: Array,
     required: true,

@@ -52,6 +52,8 @@ onMounted(async () => {
   aircrafts.value = aircraftStore.getAircraftsByAirlineID(airlineID);
 
   console.log("aircrafts set:", aircrafts.value);
+
+  loaded.value = true;
 });
 
 const flights = computed(() => {
@@ -139,11 +141,34 @@ watch(
     if (props.formMode === "edit" && props.selectedFlightID) {
       const flight = flightStore.getFlightByID(props.selectedFlightID);
       if (flight) {
-        form.value = JSON.parse(JSON.stringify(flight));
-        const selected = aircrafts.value.find(
-          (a) => a.aircraftID === form.value.aircraftID
-        );
-        form.value.aircraftName = selected ? selected.model : "";
+        form.value.flightID = flight.flightID;
+        form.value.airlineID = flight.airlineID;
+        form.value.aircraftID = flight.aircraftID;
+        form.value.aircraftName =
+          aircrafts.value.find((a) => a.aircraftID === flight.aircraftID)?.model || "";
+
+          form.value.departure = {
+            airport: flight.departure.airport,
+            date: flight.departure.date,
+            time: flight.departure.time,
+          };
+
+          form.value.destination = {
+            airport: flight.destination.airport,
+            date: flight.destination.date,
+            time: flight.destination.time,
+          };
+
+        form.value.duration = {
+          time: flight.duration || 0,
+          stop: flight.stopOver ? flight.stopOver.split(",").length : 0,
+        };
+
+        form.value.stopOvers = flight.stopOver
+          ? flight.stopOver.split(",").map((s) => s.trim())
+          : [];
+
+        form.value.flightStatus = flight.status || "";
       }
     }
   },
@@ -179,9 +204,13 @@ const confirmText = computed(() => {
 });
 
 const confirmAddFlight = () => {
-  if (isFormValid.value) {
+  const result = formSchema.safeParse(form.value);
+  console.log("✅ VALIDATION RESULT", result);
+  if (result.success) {
     confirmMode.value = "success";
     showConfirmAddFlight();
+  } else {
+    console.error("❌ Validation failed:", result.error.flatten());
   }
 };
 
@@ -230,24 +259,28 @@ const addFlight = () => {
 };
 
 const clearForm = () => {
-  for (const key in form.value) {
-    // จัดการเฉพาะ aircraftID และ aircraftName
-    if (key === "aircraftID") {
-      form.value.aircraftID = null;
-    } else if (key === "aircraftName") {
-      form.value.aircraftName = "";
-    }
-    // ถ้าเป็น object ซ้อน เช่น departure, destination, duration
-    else if (typeof form.value[key] === "object" && form.value[key] !== null) {
-      for (const subKey in form.value[key]) {
-        form.value[key][subKey] = "";
-      }
-    }
-    // ค่าปกติอื่น ๆ
-    else {
-      form.value[key] = typeof form.value[key] === "boolean" ? true : "";
-    }
-  }
+  form.value = {
+    flightID: null,
+    airlineID: null,
+    aircraftID: null,
+    aircraftName: "",
+    departure: {
+      airport: "",
+      time: "",
+      date: "",
+    },
+    destination: {
+      airport: "",
+      time: "",
+      date: "",
+    },
+    duration: {
+      time: 0,     // default 0 minute
+      stop: 0,     // default 0 stop
+    },
+    flightStatus: "",
+    stopOvers: [], 
+  };
 };
 
 const closeModalAndClearForm = () => {
@@ -396,7 +429,7 @@ watch(
                 <div class="form-row inputs">
                   <input
                     type="text"
-                    placeholder="- - -"
+                    placeholder="----------"
                     maxlength="100"
                     v-model="form.departure.airport"
                   />
@@ -415,7 +448,7 @@ watch(
                 <div class="form-row inputs">
                   <input
                     type="text"
-                    placeholder="- - -"
+                    placeholder="----------"
                     maxlength="100"
                     v-model="form.destination.airport"
                   />
@@ -459,20 +492,14 @@ watch(
                   </option>
                   <option value="add-aircraft">+ Add Aircraft</option>
                 </select>
-                  <select v-model="form.duration.stop">
-                    <option
-                      v-for="stop in [0, 1, 2, 3]"
-                      :key="stop"
-                      :value="stop"
-                    >
-                      {{ stop }}
-                    </option>
-                  </select>
+                <select v-model.number="form.duration.stop"> 
+                  <option v-for="stop in [0, 1, 2, 3]" :key="stop" :value="stop">{{ stop }}</option>
+                </select>
                   <input
                     type="number"
                     placeholder="- -"
                     min="0"
-                    v-model="form.duration.time"
+                    v-model.number="form.duration.time"
                   />
                 </div>
               </div>

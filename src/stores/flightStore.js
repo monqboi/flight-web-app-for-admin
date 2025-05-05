@@ -13,13 +13,13 @@ export const useFlightStore = defineStore("flight", {
     getFlightsByAirlineId: (state) => (airlineID) => {
       if (!airlineID) return [];
       const query = state.searchQuery.toLowerCase();
-      const selectedStatus = state.selectedFlightStatus?.toLowerCase(); 
-    
+      const selectedStatus = state.selectedFlightStatus;
+
       return state.flights.filter((flight) => {
         const matchAirlineID = Number(flight.airlineID) === Number(airlineID);
         const matchQuery = !query || String(flight.flightID).includes(query);
         const matchStatus =
-          !selectedStatus || selectedStatus === "all" || flight.flightStatus?.toLowerCase() === selectedStatus;
+          !selectedStatus || selectedStatus === "all" || flight.flightStatus === selectedStatus;
         return matchAirlineID && matchQuery && matchStatus;
       });
     },
@@ -29,9 +29,7 @@ export const useFlightStore = defineStore("flight", {
   actions: {
     async loadFlights() {
       try {
-        console.log("🔁 Calling API: /api/flight");
         const res = await axios.get("/api/flight");
-        console.log("✅ Response from /api/flight:", res.data);
         this.flights = res.data;
       } catch (error) {
         console.error("❌ Failed to fetch flights:", error);
@@ -49,16 +47,16 @@ export const useFlightStore = defineStore("flight", {
           arrivalDate: flightData.destination.date,
           arrivalTime: flightData.destination.time,
           stopOvers: flightData.stopOvers,
-          duration: parseInt(flightData.duration),
+          duration: Number(flightData.duration.time),
           aircraftID: flightData.aircraftID,
-          status: flightData.flightStatus,
+          status: capitalize(flightData.flightStatus),
         });
-    
+
         const newFlight = {
           ...flightData,
           flightID: response.data.flightID,
         };
-    
+
         this.flights.push(newFlight);
       } catch (error) {
         console.error("Failed to add flight:", error);
@@ -75,13 +73,13 @@ export const useFlightStore = defineStore("flight", {
           arrivalDate: updatedFlight.destination.date,
           arrivalTime: updatedFlight.destination.time,
           stopOvers: updatedFlight.stopOvers,
-          duration: parseInt(updatedFlight.duration),
+          duration: Number(updatedFlight.duration.time),
           aircraftID: updatedFlight.aircraftID,
-          status: updatedFlight.flightStatus,
+          status: capitalize(updatedFlight.flightStatus),
         });
-    
+
         const index = this.flights.findIndex(f => f.flightID === flightID);
-        if (index !== -1) this.flights[index] = { ...updatedFlight, flightID }; // อัปเดต local state
+        if (index !== -1) this.flights[index] = { ...updatedFlight, flightID };
       } catch (error) {
         console.error("Failed to update flight:", error);
       }
@@ -105,3 +103,8 @@ export const useFlightStore = defineStore("flight", {
     },
   },
 });
+
+function capitalize(str) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}

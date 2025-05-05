@@ -4,6 +4,12 @@ import combineDateTime from '../utils/combineDateTime.js';
 
 const router = express.Router();
 
+function capitalize(str) {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
+
 // ------------- Flight -------------
 
 // Get all Flights
@@ -14,6 +20,7 @@ router.get("/", async (req, res) => {
     const formattedResults = results.map((flight) => {
       const departureDateTime = new Date(flight.DepartureDateTime);
       const arrivalDateTime = new Date(flight.ArrivalDateTime);
+
       return {
         flightID: flight.FlightID,
         airlineID: flight.AirlineID,
@@ -28,7 +35,10 @@ router.get("/", async (req, res) => {
           time: arrivalDateTime.toISOString().split("T")[1].substring(0, 5),
         },
         stopOvers: flight.StopOver ? flight.StopOver.split(",").map(x => x.trim()) : [],
-        duration: flight.Duration,
+        duration: {
+          time: flight.Duration,
+          stop: flight.StopOver ? flight.StopOver.split(",").length : 0,
+        },
         aircraftID: flight.AircraftID,
         flightStatus: flight.Status,
         isSeatAvailable: true,
@@ -69,7 +79,10 @@ router.get("/:id", async (req, res) => {
         time: arrivalDateTime.toISOString().split("T")[1].substring(0, 5),
       },
       stopOvers: flight.StopOver ? flight.StopOver.split(",").map(x => x.trim()) : [],
-      duration: flight.Duration,
+      duration: {
+        time: flight.Duration,
+        stop: flight.StopOver ? flight.StopOver.split(",").length : 0,
+      },
       aircraftID: flight.AircraftID,
       flightStatus: flight.Status,
       isSeatAvailable: true,
@@ -84,23 +97,22 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const {
-      airlineID, // INTEGER: 1234
-      departure, // VARCHAR(100): 'BKK'
-      destination, // VARCHAR(100): 'USA'
-      departureDate,    // '2025-05-15'
-      departureTime,    // '18:00' 
-      arrivalDate,      // '2025-05-16'
-      arrivalTime,      // '07:00'
-      stopOvers,         // VARCHAR(100): ['JPN', 'KR'] -> 'JPN', 'KR'
-      duration,         // INTEGER: 660
-      aircraftID,       // INTEGER: 1234
-      status            // ENUM('Pending', 'Delayed', 'Completed', 'Canceled')
+      airlineID,
+      departure,
+      destination,
+      departureDate,
+      departureTime,
+      arrivalDate,
+      arrivalTime,
+      stopOvers,
+      duration,
+      aircraftID,
+      status,
     } = req.body;
 
     const departureDateTime = combineDateTime(departureDate, departureTime);
     const arrivalDateTime = combineDateTime(arrivalDate, arrivalTime);
 
-    // Validate: Departure !== Destination
     if (departure === destination) {
       return res.status(400).send("Departure and destination must be different.");
     }
@@ -120,7 +132,7 @@ router.post("/", async (req, res) => {
       stopOvers.join(", "),
       duration,
       aircraftID,
-      status
+      capitalize(status),
     ];
 
     const [result] = await db.query(query, values);
@@ -133,54 +145,53 @@ router.post("/", async (req, res) => {
 });
 
 // Update an existing Flight
-router.put("/:id", async (req, res) => {
+router.post("/", async (req, res) => {
   try {
     const {
-      departure, destination,
-      departureDate, departureTime,
-      arrivalDate, arrivalTime,
-      stopOvers, duration,
-      aircraftID, status
+      airlineID,
+      departure,
+      destination,
+      departureDate,
+      departureTime,
+      arrivalDate,
+      arrivalTime,
+      stopOvers,
+      duration,
+      aircraftID,
+      status,
     } = req.body;
 
     const departureDateTime = combineDateTime(departureDate, departureTime);
     const arrivalDateTime = combineDateTime(arrivalDate, arrivalTime);
 
-    // Validate: Departure !== Destination
     if (departure === destination) {
       return res.status(400).send("Departure and destination must be different.");
     }
 
-    const stopOverString = stopOvers.filter(x => x.trim() !== "").join(", ");
-
     const query = `
-      UPDATE Flight 
-      SET Departure = ?, Destination = ?, DepartureDateTime = ?, ArrivalDateTime = ?, StopOver = ?, Duration = ?, AircraftID = ?, Status = ?
-      WHERE FlightID = ?
+      INSERT INTO Flight 
+      (AirlineID, Departure, Destination, DepartureDateTime, ArrivalDateTime, StopOver, Duration, AircraftID, Status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
+      airlineID,
       departure,
       destination,
       departureDateTime,
       arrivalDateTime,
-      stopOverString,
+      stopOvers.join(", "),
       duration,
       aircraftID,
-      status,
-      req.params.id
+      capitalize(status),
     ];
 
     const [result] = await db.query(query, values);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).send("Flight not found");
-    }
-
-    res.json({ message: "Flight updated successfully" });
+    res.status(201).json({ message: "Flight created successfully", flightID: result.insertId });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error updating flight");
+    res.status(500).send("Server error");
   }
 });
 
