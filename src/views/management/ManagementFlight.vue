@@ -1,10 +1,10 @@
-  <script setup>
+<script setup>
   import ManagementOverview from "@/components/ManagementOverview.vue";
   import FlightPagination from "@/components/management-flight/FlightPagination.vue";
   import ModalAddFlight from "@/components/management-flight/ModalAddFlight.vue";
   import ModalConfirm from "@/components/ModalConfirm.vue";
   import { formatDate, mapFlightStatus } from "@/utils/flightUtils";
-  import { getFlightDurationHours } from "@/utils/flightDurationHours";
+  import { getFlightDurationHours, minutesToHours } from "@/utils/timeFunction";
   import { ref, computed, onMounted, watch } from "vue";
   import { useFlightStore } from "@/stores/flightStore";
   import { useAircraftStore } from "@/stores/aircraftStore";
@@ -36,15 +36,14 @@
   ];
 
   function getStatusClass(status) {
-    switch ((status || "").toLowerCase()) {
-      case "pending": return "pending";
-      case "delayed": return "delayed";
-      case "completed": return "completed";
-      case "canceled": return "canceled";
-      default: return "";
-    }
+  return (status || '').toLowerCase(); // 'Pending' => 'pending'
   }
   
+  function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+  }
+
   const route = useRoute();
   const flightStore = useFlightStore();
   const aircraftStore = useAircraftStore();
@@ -283,6 +282,9 @@
                   />
                 </div>
                 <p>{{ flight.duration.stop }} stop</p>
+                <div v-if="flight.stopOvers?.length" class="stopover-names">
+                  <small>{{ flight.stopOvers.join(" → ") }} ({{ minutesToHours(flight.duration.time) }})</small>
+                </div>
               </div>
             </div>
 
@@ -327,8 +329,8 @@
             </div>
 
             <div class="flight-cell status-cell">
-              <span :class="['badge', getStatusClass(flight.flightStatus.toLowerCase())]">
-                {{ flight.flightStatus }}
+              <span :class="['status-badge', `status-${flight.flightStatus.toLowerCase()}`]">
+                {{ capitalize(flight.flightStatus) }}
               </span>
             </div>
 
@@ -678,13 +680,13 @@
   color: var(--c-soft-blue);
 }
 
-/* not pending  */
+/* not pending || delayed */
 .line img.center {
   left: 50%;
   transform: translate(-50%, -50%);
 }
 
-/* pending */
+/* pending || delayed */
 .line img.animate {
   left: 0;
   animation: plane-move 4s infinite linear;
@@ -814,6 +816,12 @@
   color: var(--vt-c-gray-5);
   font-weight: 500;
   line-height: 1.4;
+}
+
+.stopover-names {
+  font-size: 0.75rem;
+  color: #6b7280; /* Tailwind gray-500 */
+  margin-top: 2px;
 }
 
 /* Status Badge Styling */

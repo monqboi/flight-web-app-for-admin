@@ -30,7 +30,21 @@ export const useFlightStore = defineStore("flight", {
     async loadFlights() {
       try {
         const res = await axios.get("/api/flight");
-        this.flights = res.data;
+    
+        this.flights = res.data.map((flight) => {
+          let parsedStops = [];
+    
+          if (Array.isArray(flight.stopOvers)) {
+            parsedStops = flight.stopOvers;
+          } else if (typeof flight.stopOvers === "string") {
+            parsedStops = flight.stopOvers.split(",").map((s) => s.trim());
+          }
+    
+          return {
+            ...flight,
+            stopOver: parsedStops, 
+          };
+        });
       } catch (error) {
         console.error("❌ Failed to fetch flights:", error);
       }

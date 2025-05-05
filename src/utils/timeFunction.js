@@ -9,3 +9,9 @@ export function getFlightDurationHours(flight) {
       return "?";
     }
   }
+
+export function minutesToHours(minutes) {
+    if (!minutes || isNaN(minutes)) return "0 hrs";
+    const hours = (minutes / 60).toFixed(1);
+    return `${hours} hrs`;
+}
