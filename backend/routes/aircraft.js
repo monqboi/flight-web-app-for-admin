@@ -42,7 +42,7 @@ router.post("/", async (req, res) => {
     }
 
     const query = `
-      INSERT INTO Aircraft (Model, Capacity, AirlineID, RegistrationNumber, Status)
+      INSERT INTO Aircraft (Model, Capacity, AirlineID, RegistrationNumber, AircraftStatus)
       VALUES (?, ?, ?, ?, ?)
     `;
     const values = [model, capacity, airlineID, registrationNumber, aircraftStatus];
@@ -68,7 +68,7 @@ router.put("/:id", async (req, res) => {
 
     const query = `
       UPDATE Aircraft
-      SET Model = ?, Capacity = ?, AirlineID = ?, RegistrationNumber = ?, Status = ?
+      SET Model = ?, Capacity = ?, AirlineID = ?, RegistrationNumber = ?, AircraftStatus = ?
       WHERE AircraftID = ?
     `;
     const values = [model, capacity, airlineID, registrationNumber, aircraftStatus, aircraftID];

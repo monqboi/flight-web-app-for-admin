@@ -23,17 +23,21 @@ const confirmMode = ref("");
 const aircrafts = ref([]);
 const aircraft = ref(null);
 
+const statusOptions = [
+  { label: "Available", value: "Available", class: "available" },
+  { label: "Not Available", value: "Not Available", class: "not-available" },
+];
+
 onMounted(() => {
-  if (props.aircraftID) {
-    aircraft.value = aircraftStore.getAircraftByID(props.aircraftID);
-    if (!aircraft.value) {
-      console.warn('[ModalAircraft] aircraft not found:', props.aircraftID);
+  if (props.airlineID && airlineStore.airlines.length > 0) {
+    const airline = airlineStore.getAirlineByID(props.airlineID);
+    if (airline) {
+      form.value.airline = airline.name;
     }
   }
 });
 
 const formSchema = object({
-  airline: string().min(1, "Airline is required"),
   capacity: number()
     .min(1, "Capacity is required")
     .refine((value) => value > 0, {
@@ -46,10 +50,10 @@ const formSchema = object({
     .min(1, "Registration Number is required")
     .max(20, "Registration Number must be less than 20 characters"),
   aircraftStatus: string().min(1, "Aircraft Status is required"),
+  airlineID: number().int().positive("AirlineID is required"),
 });
 
 const form = ref({
-  airline: "",
   capacity: 0,
   model: "",
   registrationNumber: "",
@@ -215,8 +219,9 @@ const confirmText = computed(() => {
                     :class="['badge', selected?.class?.toLowerCase()]"
                     v-if="selected"
                   >
-                    {{ selected.label || form.aircraftStatus }}
+                    {{ selected.label }}
                   </span>
+                  <span v-else>Select Status</span>
                 </template>
               </Dropdown>
             </div>
@@ -242,7 +247,11 @@ const confirmText = computed(() => {
                   align-items: center;
                 "
               >
-                <input type="text" v-model="form.airline" disabled />
+              <input
+                type="text"
+                :value="airlineStore.getAirlineByID(props.airlineID)?.name || 'Unknown Airline'"
+                disabled
+              />
                 <input type="number" v-model="form.capacity" min="0" />
               </div>
 
