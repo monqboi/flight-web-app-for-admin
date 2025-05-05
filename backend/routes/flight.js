@@ -145,10 +145,9 @@ router.post("/", async (req, res) => {
 });
 
 // Update an existing Flight
-router.post("/", async (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const {
-      airlineID,
       departure,
       destination,
       departureDate,
@@ -169,13 +168,19 @@ router.post("/", async (req, res) => {
     }
 
     const query = `
-      INSERT INTO Flight 
-      (AirlineID, Departure, Destination, DepartureDateTime, ArrivalDateTime, StopOver, Duration, AircraftID, Status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      UPDATE Flight SET 
+        Departure = ?, 
+        Destination = ?, 
+        DepartureDateTime = ?, 
+        ArrivalDateTime = ?, 
+        StopOver = ?, 
+        Duration = ?, 
+        AircraftID = ?, 
+        Status = ?
+      WHERE FlightID = ?
     `;
 
     const values = [
-      airlineID,
       departure,
       destination,
       departureDateTime,
@@ -184,16 +189,22 @@ router.post("/", async (req, res) => {
       duration,
       aircraftID,
       capitalize(status),
+      req.params.id,
     ];
 
     const [result] = await db.query(query, values);
 
-    res.status(201).json({ message: "Flight created successfully", flightID: result.insertId });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Flight not found" });
+    }
+
+    res.json({ message: "Flight updated successfully" });
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
   }
 });
+
 
 // Delete a Flight
 router.delete("/:id", async (req, res) => {

@@ -4,6 +4,7 @@
   import ModalAddFlight from "@/components/management-flight/ModalAddFlight.vue";
   import ModalConfirm from "@/components/ModalConfirm.vue";
   import { formatDate, mapFlightStatus } from "@/utils/flightUtils";
+  import { getFlightDurationHours } from "@/utils/flightDurationHours";
   import { ref, computed, onMounted, watch } from "vue";
   import { useFlightStore } from "@/stores/flightStore";
   import { useAircraftStore } from "@/stores/aircraftStore";
@@ -269,7 +270,7 @@
               "
             >
               <div class="flight-line">
-                <p>{{ flight.duration.time }} hrs</p>
+                <p>{{ getFlightDurationHours(flight) }} hrs</p>
                 <div class="line">
                   <img
                     src="/dashboard-pic/icons/plane-icon.png"
