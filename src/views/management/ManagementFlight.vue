@@ -4,7 +4,7 @@ import FlightPagination from "@/components/management-flight/FlightPagination.vu
 import ModalAddFlight from "@/components/management-flight/ModalAddFlight.vue";
 import ModalConfirm from "@/components/ModalConfirm.vue";
 import { formatDate, mapFlightStatus } from "@/utils/flightUtils";
-import { ref, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useFlightStore } from "@/stores/flightStore";
 import { useAircraftStore } from "@/stores/aircraftStore";
 import { useRouter, useRoute } from "vue-router";
@@ -29,11 +29,7 @@ const tableHeaders = [
 const statusOptions = [
   { label: "All", value: "all", class: "all" },
   { label: "Canceled", value: "canceled", class: "canceled" },
-  {
-    label: "Completed",
-    value: "completed",
-    class: "completed",
-  },
+  { label: "Completed", value: "completed", class: "completed" },
   { label: "Pending", value: "pending", class: "pending" },
   { label: "Delayed", value: "delayed", class: "delayed" },
 ];
@@ -41,23 +37,37 @@ const statusOptions = [
 const route = useRoute();
 const flightStore = useFlightStore();
 const aircraftStore = useAircraftStore();
+const airlineID = Number(route.params.airlineID);
+const aircraftsForThisAirline = computed(() =>
+  aircraftStore.getAircraftsByAirlineID(Number(airlineID))
+);
 const router = useRouter();
 const isShowModal = ref(false);
 const isShowAircraft = ref(false);
 const isShowConfirmModal = ref(false);
-const confirmMode = ref("");
+const confirmMode = ref("");  
 
 const status = ref("");
 const formMode = ref("");
 const selectedAircraftID = ref("");
 const selectedFlightID = ref(0);
-const airlineID = route.params.airlineID;
+
+const filteredFlights = computed(() => {
+  return flightStore.getFlightsByAirlineId(airlineID);
+});
 
 onMounted(async () => {
-  await flightStore.loadFlights()
+  console.log("onMounted ManagementFlight.vue");
+  await flightStore.loadFlights();
   await aircraftStore.loadAircrafts();
-  flightStore.setSelectedStatus(null);
-  flightStore.setSearchQuery("");
+  console.log("All aircrafts loaded:", aircraftStore.aircraft);
+  console.log("All flights from store:", flightStore.flights);
+  console.log("Filtered flights by airline", airlineID, ":", filteredFlights.value);
+});
+
+watch(filteredFlights, (newFlights) => {
+  console.log("filteredFlights changed:", newFlights); 
+  paginatedFlights.value = newFlights;
 });
 
 // ส่วนของ pageination เเละ sort data
@@ -69,12 +79,6 @@ const paginatedFlights = ref([]);
 const updatePaginatedFlights = (flights) => {
   paginatedFlights.value = flights;
 };
-
-/*
-const filteredFlights = computed(() => {
-  return flightStore.getFlightsByAirlineId(airlineID);
-});
-*/
 
 const addFlight = (newFlight) => {
   flightStore.addFlight(newFlight);
@@ -260,8 +264,8 @@ watch(status, (newStatus) => {
                 <img
                   src="/dashboard-pic/icons/plane-icon.png"
                   :class="{
-                    animate: flight.flightStatus === 'pending',
-                    center: flight.flightStatus !== 'pending',
+                    animate: flight.flightStatus === 'Pending',
+                    center: flight.flightStatus !== 'Pending',
                   }"
                   alt="Plane Icon"
                 />
@@ -305,20 +309,19 @@ watch(status, (newStatus) => {
             class="flight-cell aircraft-cell"
             @click="showModalInfoAircraft(flight.aircraftID)"
           >
-            <p :class="getAircraftStatusClass(flight.aircraftID)">
-              {{ getAircraftModelPart(flight.aircraftID, 0) }}<br />
-              {{ getAircraftModelPart(flight.aircraftID, 1) }}
-            </p>
+          <p :class="getAircraftStatusClass(flight.aircraftID)">
+            {{ aircraftStore.getAircraftByID(flight.aircraftID)?.model || "Unknown Model" }}
+          </p>
           </div>
 
           <div class="flight-cell status-cell">
             <span
               class="status-badge"
               :class="{
-                'status-completed': flight.flightStatus === 'completed',
-                'status-canceled': flight.flightStatus === 'canceled',
-                'status-pending': flight.flightStatus === 'pending',
-                'status-delayed': flight.flightStatus === 'delayed',
+                'status-completed': flight.flightStatus === 'Completed',
+                'status-canceled': flight.flightStatus === 'Canceled',
+                'status-pending': flight.flightStatus === 'Pending',
+                'status-delayed': flight.flightStatus === 'Delayed',
               }"
             >
               {{ mapFlightStatus(flight.flightStatus) }}
@@ -379,8 +382,12 @@ watch(status, (newStatus) => {
       </div>
       <!-- :flights="filteredFlights" -->
       <FlightPagination
+        :flights="filteredFlights"
         @update:paginatedData="updatePaginatedFlights"
       />
+      <!-- <pre>All flights: {{ flightStore.flights }}</pre> -->
+      <!-- <pre>Filtered: {{ filteredFlights }}</pre> -->
+      <!-- <pre>Paginated: {{ paginatedFlights }}</pre> -->
     </template>
   </ManagementOverview>
   <ModalAircraft

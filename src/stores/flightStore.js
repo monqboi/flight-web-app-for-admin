@@ -12,14 +12,14 @@ export const useFlightStore = defineStore("flight", {
     getAllFlights: (state) => state.flights,
     getFlightsByAirlineId: (state) => (airlineID) => {
       if (!airlineID) return [];
-      const numericID = Number(airlineID);
-      const query = state.searchQuery;
-      const selectedStatus = state.selectedFlightStatus;
+      const query = state.searchQuery.toLowerCase();
+      const selectedStatus = state.selectedFlightStatus?.toLowerCase(); 
     
       return state.flights.filter((flight) => {
-        const matchAirlineID = Number(flight.airlineID) === numericID;
+        const matchAirlineID = Number(flight.airlineID) === Number(airlineID);
         const matchQuery = !query || String(flight.flightID).includes(query);
-        const matchStatus = !selectedStatus || selectedStatus === "all" || flight.flightStatus === selectedStatus;
+        const matchStatus =
+          !selectedStatus || selectedStatus === "all" || flight.flightStatus?.toLowerCase() === selectedStatus;
         return matchAirlineID && matchQuery && matchStatus;
       });
     },
@@ -29,10 +29,12 @@ export const useFlightStore = defineStore("flight", {
   actions: {
     async loadFlights() {
       try {
+        console.log("🔁 Calling API: /api/flight");
         const res = await axios.get("/api/flight");
+        console.log("✅ Response from /api/flight:", res.data);
         this.flights = res.data;
       } catch (error) {
-        console.error("Failed to fetch flights:", error);
+        console.error("❌ Failed to fetch flights:", error);
       }
     },
 
@@ -47,21 +49,17 @@ export const useFlightStore = defineStore("flight", {
           arrivalDate: flightData.destination.date,
           arrivalTime: flightData.destination.time,
           stopOvers: flightData.stopOvers,
-          duration: {
-            time: parseInt(flightData.duration.time),
-            stop: parseInt(flightData.duration.stop),
-          },
+          duration: parseInt(flightData.duration),
           aircraftID: flightData.aircraftID,
-          flightStatus: flightData.flightStatus,
+          status: flightData.flightStatus,
         });
     
         const newFlight = {
           ...flightData,
-          flightID: response.data.flightID,  
+          flightID: response.data.flightID,
         };
     
         this.flights.push(newFlight);
-    
       } catch (error) {
         console.error("Failed to add flight:", error);
       }
@@ -69,24 +67,21 @@ export const useFlightStore = defineStore("flight", {
 
     async updateFlight(flightID, updatedFlight) {
       try {
-        const response = await axios.post("/api/flight", {
-          airlineID: flightData.airlineID,
-          departure: flightData.departure.airport,
-          departureDate: flightData.departure.date,
-          departureTime: flightData.departure.time,
-          destination: flightData.destination.airport,
-          arrivalDate: flightData.destination.date,
-          arrivalTime: flightData.destination.time,
-          stopOvers: flightData.stopOvers,    
-          duration: {
-            time: parseInt(flightData.duration.time),
-            stop: parseInt(flightData.duration.stop),
-          },
-          aircraftID: flightData.aircraftID,
-          flightStatus: flightData.flightStatus,
-        })
+        await axios.put(`/api/flight/${flightID}`, {
+          departure: updatedFlight.departure.airport,
+          departureDate: updatedFlight.departure.date,
+          departureTime: updatedFlight.departure.time,
+          destination: updatedFlight.destination.airport,
+          arrivalDate: updatedFlight.destination.date,
+          arrivalTime: updatedFlight.destination.time,
+          stopOvers: updatedFlight.stopOvers,
+          duration: parseInt(updatedFlight.duration),
+          aircraftID: updatedFlight.aircraftID,
+          status: updatedFlight.flightStatus,
+        });
+    
         const index = this.flights.findIndex(f => f.flightID === flightID);
-        if (index !== -1) this.flights[index] = response.data; // updated flight
+        if (index !== -1) this.flights[index] = { ...updatedFlight, flightID }; // อัปเดต local state
       } catch (error) {
         console.error("Failed to update flight:", error);
       }

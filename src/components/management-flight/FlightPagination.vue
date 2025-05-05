@@ -3,48 +3,22 @@ import { useFlightStore } from "@/stores/flightStore";
 import { ref, computed, watch, defineEmits, onMounted } from "vue";
 import { useRoute } from "vue-router";
 
-const emit = defineEmits(["update:paginatedData"]);
-const route = useRoute();
-const airlineID = route.params.airlineID;
-const flightStore = useFlightStore();
-const flightData = computed(() => {
-  if (!airlineID) return [];
-  return flightStore.getFlightsByAirlineId(airlineID);
-});
-const itemsPerPage = 6;
-const currentPage = ref(1);
-
-/*
-defineProps({
+const props = defineProps({
   flights: {
     type: Array,
     required: true,
   },
 });
-*/
 
-onMounted(async () => {
-  await flightStore.loadFlights(); 
-  emit("update:paginatedData", paginatedFlights.value);
-});
+const emit = defineEmits(["update:paginatedData"]);
+const route = useRoute();
+const airlineID = Number(route.params.airlineID);
+const flightStore = useFlightStore();
 
-// เพิ่ม watcher สำหรับข้อมูลเที่ยวบิน
-watch(
-  [
-    flightData,
-    () => flightStore.searchQuery,
-    () => flightStore.selectedFlightStatus,
-  ],
-  () => {
-    currentPage.value = 1;
-    emit("update:paginatedData", paginatedFlights.value);
-  },
-  { deep: true }
-);
+const flightData = computed(() => props.flights); 
 
-watch(currentPage, () => {
-  emit("update:paginatedData", paginatedFlights.value);
-});
+const itemsPerPage = 6;
+const currentPage = ref(1);
 
 //  คำนวณจำนวนหน้าทั้งหมด = จำนวนเที่ยวบิน ÷ จำนวนรายการต่อหน้า
 //  flightData.value.length = 12, itemsPerPage = 6, totalPages = 2
@@ -58,6 +32,27 @@ const paginatedFlights = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage;
   const end = start + itemsPerPage;
   return flightData.value.slice(start, end);
+});
+
+watch(paginatedFlights, (val) => {
+  console.log(" paginatedFlights updated and emitted:", val);
+});
+
+onMounted(() => {
+  console.log("Flights received as props:", props.flights);
+  emit("update:paginatedData", paginatedFlights.value);
+});
+
+watch(
+  () => props.flights,
+  () => {
+    emit("update:paginatedData", paginatedFlights.value);
+  },
+  { immediate: true }
+);
+
+watch(currentPage, () => {
+  emit("update:paginatedData", paginatedFlights.value);
 });
 
 // คำนวณว่าจะแสดงเลขหน้าไหนบ้าง
@@ -88,7 +83,7 @@ const showEllipsis = computed(() => {
 
 function goToPage(page) {
   currentPage.value = page;
-  emit("update:paginatedData", paginatedFlights.value);
+  emit("update:paginatedData", paginatedFlights.value)
 }
 
 function goToPrevPage() {
@@ -111,9 +106,6 @@ function goToLastPage() {
   goToPage(totalPages.value);
 }
 
-watch(currentPage, () => {
-  emit("update:paginatedData", paginatedFlights.value);
-});
 </script>
 
 <template>

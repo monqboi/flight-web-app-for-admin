@@ -23,13 +23,13 @@ export const formatDate = (date) => {
 
 export const mapFlightStatus = (status) => {
   switch (status) {
-    case "pending":
+    case "Pending":
       return "Pending";
-    case "completed":
+    case "Completed":
       return "Completed";
     case "delayed":
       return "Delayed";
-    case "canceled":
+    case "Canceled":
       return "Canceled";
     default:
       return "Unknown Status";

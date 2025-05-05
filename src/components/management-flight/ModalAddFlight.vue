@@ -43,25 +43,16 @@ const isShowConfirmModal = ref(false);
 const aircrafts = ref([]);
 const loaded = ref(false);
 
-onMounted(() => {
-  loaded.value = false;
-  aircraftStore.loadAircrafts();
-  aircrafts.value = aircraftStore.getAircraftsByAirlineID(airlineID);
-  loaded.value = true;
-});
+onMounted(async () => {
+  if (aircraftStore.aircraft.length === 0) {
+    console.log("ModalAddFlight.vue loading aircrafts...");
+    await aircraftStore.loadAircrafts();
+  }
 
-watch(
-  () => props.selectedFlightID,
-  () => {
-    if (props.formMode === "edit" && props.selectedFlightID) {
-      const flight = flightStore.getFlightByID(props.selectedFlightID);
-      if (flight) {
-        form.value = JSON.parse(JSON.stringify(flight));
-      }
-    }
-  },
-  { immediate: true }
-);
+  aircrafts.value = aircraftStore.getAircraftsByAirlineID(airlineID);
+
+  console.log("aircrafts set:", aircrafts.value);
+});
 
 const flights = computed(() => {
   return flightStore.getAllFlights || [];
@@ -122,10 +113,12 @@ const formSchema = object({
 const form = ref({
   flightID: null,
   airlineID: null,
+  aircraftID: null,
+  aircraftName: "",
   departure: {
     airport: "",
     time: "",
-    date: "",
+    date: "", 
   },
   destination: {
     airport: "",
@@ -139,6 +132,23 @@ const form = ref({
   flightStatus: "",
   stopOvers: [],
 });
+
+watch(
+  () => props.selectedFlightID,
+  () => {
+    if (props.formMode === "edit" && props.selectedFlightID) {
+      const flight = flightStore.getFlightByID(props.selectedFlightID);
+      if (flight) {
+        form.value = JSON.parse(JSON.stringify(flight));
+        const selected = aircrafts.value.find(
+          (a) => a.aircraftID === form.value.aircraftID
+        );
+        form.value.aircraftName = selected ? selected.model : "";
+      }
+    }
+  },
+  { immediate: true }
+);
 
 const isFormValid = computed(() => {
   const result = formSchema.safeParse(form.value);
@@ -221,11 +231,20 @@ const addFlight = () => {
 
 const clearForm = () => {
   for (const key in form.value) {
-    if (typeof form.value[key] === "object" && form.value[key] !== null) {
+    // จัดการเฉพาะ aircraftID และ aircraftName
+    if (key === "aircraftID") {
+      form.value.aircraftID = null;
+    } else if (key === "aircraftName") {
+      form.value.aircraftName = "";
+    }
+    // ถ้าเป็น object ซ้อน เช่น departure, destination, duration
+    else if (typeof form.value[key] === "object" && form.value[key] !== null) {
       for (const subKey in form.value[key]) {
         form.value[key][subKey] = "";
       }
-    } else {
+    }
+    // ค่าปกติอื่น ๆ
+    else {
       form.value[key] = typeof form.value[key] === "boolean" ? true : "";
     }
   }
@@ -247,11 +266,16 @@ const handleAircraftSelection = (value) => {
   if (value === "add-aircraft") {
     showAircraftModal.value = true;
     form.value.aircraftID = null;
+    form.value.aircraftName = "";
+  } else {
+    const selected = aircraftStore.getAircraftByID(parseInt(value, 10));
+    form.value.aircraftID = parseInt(value, 10);
+    form.value.aircraftName = selected?.model || "";
   }
 };
 
-const handleAircraftAdded = (newAircraft) => {
-  aircraftStore.loadAircrafts();
+const handleAircraftAdded = async (newAircraft) => {
+  await aircraftStore.loadAircrafts();
   aircrafts.value = aircraftStore.getAircraftsByAirlineID(airlineID);
 };
 
@@ -266,10 +290,19 @@ watch(
 );
 
 watch(
-  () => aircraftStore.loadAircrafts,
-  (newAircrafts) => {},
-  { deep: true }
+  () => props.selectedFlightID,
+  () => {
+    if (props.formMode === "edit" && props.selectedFlightID) {
+      const flight = flightStore.getFlightByID(props.selectedFlightID);
+      if (flight) {
+        form.value = JSON.parse(JSON.stringify(flight));
+        form.value.aircraftID = flight.aircraftID;
+      }
+    }
+  },
+  { immediate: true }
 );
+
 </script>
 
 <template>
@@ -412,23 +445,20 @@ watch(
                     align-items: center;
                   "
                 >
-                  <select
-                    :key="aircrafts.length"
-                    v-model="form.aircraftID"
-                    @change="handleAircraftSelection($event.target.value)"
+                <select
+                  v-model="form.aircraftID"
+                  @change="handleAircraftSelection($event.target.value)"
+                >
+                  <option value="" disabled selected hidden>Select Aircraft</option>
+                  <option
+                    v-for="aircraft in aircrafts"
+                    :key="aircraft.aircraftID"
+                    :value="aircraft.aircraftID"
                   >
-                    <option value="" disabled selected hidden>
-                      Select Aircraft
-                    </option>
-                    <option
-                      v-for="aircraft in aircrafts"
-                      :key="aircraft.aircraftID"
-                      :value="aircraft.aircraftID"
-                    >
-                      {{ aircraft.model }}
-                    </option>
-                    <option value="add-aircraft">+ Add Aircraft</option>
-                  </select>
+                    {{ aircraft.model }}
+                  </option>
+                  <option value="add-aircraft">+ Add Aircraft</option>
+                </select>
                   <select v-model="form.duration.stop">
                     <option
                       v-for="stop in [0, 1, 2, 3]"
@@ -500,6 +530,7 @@ watch(
   <ModalAircraft
     v-if="showAircraftModal"
     :showAircraft="showAircraftModal"
+    :aircraftID="typeof form.aircraftID === 'number' ? form.aircraftID : undefined"
     :airlineID="airlineID"
     formMode="add"
     @close="showAircraftModal = false"

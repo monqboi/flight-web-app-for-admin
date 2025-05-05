@@ -8,50 +8,29 @@ import { object, string, number } from "zod";
 import ModalConfirm from "../ModalConfirm.vue";
 import Dropdown from "../Dropdown.vue";
 
+const props = defineProps({
+  showAircraft: Boolean,
+  aircraftID: [Number, String],
+  airlineID: Number,
+  formMode: String
+});
+
 const emit = defineEmits(["close", "aircraftAdded"]);
 const aircraftStore = useAircraftStore();
 const airlineStore = useAirlineStore();
 const showConfirmModal = ref(false);
 const confirmMode = ref("");
-
-const props = defineProps({
-  showAircraft: {
-    type: Boolean,
-    default: false,
-  },
-  airlineID: {
-    type: Number,
-    default: null,
-  },
-  aircraftID: {
-    type: Number,
-    default: null,
-  },
-  formMode: {
-    type: String,
-    default: "",
-  },
-});
+const aircrafts = ref([]);
+const aircraft = ref(null);
 
 onMounted(() => {
-  aircraftStore.loadAircrafts();
-  airlineStore.loadAirlines();
-
-  const airline = airlineStore.getAirlineByID(props.airlineID);
-
-  const selectedAirline = airlineStore.getAirlineByID(props.airlineID);
-  if (selectedAirline) {
-    form.value = {
-      ...form.value,
-      airline: selectedAirline.name,
-    };
+  if (props.aircraftID) {
+    aircraft.value = aircraftStore.getAircraftByID(props.aircraftID);
+    if (!aircraft.value) {
+      console.warn('[ModalAircraft] aircraft not found:', props.aircraftID);
+    }
   }
 });
-
-const statusOptions = [
-  { value: "available", label: "Available", class: "available" },
-  { value: "not-available", label: "Not Available", class: "not-available" },
-];
 
 const formSchema = object({
   airline: string().min(1, "Airline is required"),
@@ -78,18 +57,33 @@ const form = ref({
   airlineID: props.airlineID,
 });
 
-// ดึงข้อมูลจาก store ตาม aircraftID ที่ส่งเข้ามา
+const loaded = ref(false)
+
 watch(
   () => props.aircraftID,
-  (newID) => {
+  async (newID) => {
     if (!newID) return;
 
+    if (aircraftStore.aircraft.length === 0) {
+      await aircraftStore.loadAircrafts();
+      aircrafts.value = aircraftStore.getAircraftsByAirlineID(props.airlineID); 
+    }
+
+    if (airlineStore.airlines.length === 0) {
+      await airlineStore.loadAirlines();
+    }
+
     const aircraft = aircraftStore.getAircraftByID(newID);
+    const airline = airlineStore.getAirlineByID(aircraft?.airlineID);
+
+    console.log("aircraft:", aircraft);
+    console.log("airline:", airline);
 
     if (aircraft) {
       form.value = {
         ...form.value,
         ...aircraft,
+        airline: airline?.name || "",
       };
     }
   },

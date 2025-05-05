@@ -28,12 +28,9 @@ router.get("/", async (req, res) => {
           time: arrivalDateTime.toISOString().split("T")[1].substring(0, 5),
         },
         stopOvers: flight.StopOver ? flight.StopOver.split(",").map(x => x.trim()) : [],
-        duration: {
-          time: flight.Duration,
-          stop: flight.StopOver ? flight.StopOver.split(",").length : 0,
-        },
+        duration: flight.Duration,
         aircraftID: flight.AircraftID,
-        flightStatus: flight.Status.toLowerCase(),
+        flightStatus: flight.Status,
         isSeatAvailable: true,
       };
     });
@@ -72,12 +69,9 @@ router.get("/:id", async (req, res) => {
         time: arrivalDateTime.toISOString().split("T")[1].substring(0, 5),
       },
       stopOvers: flight.StopOver ? flight.StopOver.split(",").map(x => x.trim()) : [],
-      duration: {
-        time: flight.Duration,
-        stop: flight.StopOver ? flight.StopOver.split(",").length : 0,
-      },
+      duration: flight.Duration,
       aircraftID: flight.AircraftID,
-      flightStatus: flight.Status.toLowerCase(),
+      flightStatus: flight.Status,
       isSeatAvailable: true,
     });
   } catch (err) {
