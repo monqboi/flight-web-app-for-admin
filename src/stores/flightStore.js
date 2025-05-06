@@ -46,7 +46,7 @@ export const useFlightStore = defineStore("flight", {
           };
         });
       } catch (error) {
-        console.error("❌ Failed to fetch flights:", error);
+        console.error("Failed to fetch flights:", error);
       }
     },
 

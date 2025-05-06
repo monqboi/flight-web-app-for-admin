@@ -43,6 +43,7 @@ router.get("/", async (req, res) => {
   }
 });
 
+/*
 // CREATE new payment + update Reservation if 'Successful'
 router.post("/", async (req, res) => {
   const {
@@ -111,6 +112,7 @@ router.post("/", async (req, res) => {
     res.status(500).send("Error processing payment");
   }
 });
+*/
 
 // Update an existing payment
 router.put("/:id", async (req, res) => {

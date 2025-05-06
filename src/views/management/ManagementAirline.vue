@@ -53,7 +53,7 @@ const handleSearch = (event) => {
             </div>
             <input
               type="text"
-              placeholder="Search Admin"
+              placeholder="Search Airline"
               class="search-input"
               @input="handleSearch"
             />

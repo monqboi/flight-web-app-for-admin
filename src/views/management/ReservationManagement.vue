@@ -12,8 +12,11 @@ const searchQuery = ref('');
 const showModal = ref(false);
 const editIndex = ref(null);
 
+const flightID = route.params.flightID
+const airlineID = route.params.airlineID
 const reservationStore = useReservationStore();
 const flightStore = useFlightStore();
+const flight = computed(() => flightStore.getFlightByID(flightID));
 
 const form = ref({
   userId: '',
@@ -25,10 +28,8 @@ const form = ref({
 
 onMounted(async () => {
   await flightStore.loadFlights();
-  await reservationStore.loadReservations(route.params.flightId);
+  await reservationStore.loadReservations(flightID);
 });
-
-const flight = computed(() => flightStore.getFlightByID(route.params.flightId));
 
 const reservations = computed(() =>
   reservationStore.reservations.map(r => ({
@@ -168,6 +169,7 @@ function goBack() {
           <thead>
             <tr>
               <th class="spacer-col"></th>
+              <th>Reservation ID</th>
               <th>User</th>
               <th>Seat Number</th>
               <th>Amount</th>
@@ -180,10 +182,11 @@ function goBack() {
           </thead>
           <tbody>
             <tr class="ticket-row" v-for="(res, index) in filteredReservations" :key="res.id">
+              <td>#{{ res.id }}</td>
               <td>{{ res.username }}<br /><span class="small-id">#{{ res.userId }}</span></td>
               <td>{{ res.seatNumber }}</td>
               <td>{{ res.amount }}</td>
-              <td>{{ res.paymentId }}</td>
+              <td>#{{ res.paymentId }}</td>
               <td>{{ res.bookingDate }}</td>
               <td>
                 <span class="status" :class="{
@@ -195,7 +198,7 @@ function goBack() {
                 </span>
               </td>
               <td>
-                <div class="action-buttons">
+                <div class="action-buttons" >
                   <i class="fa fa-edit" @click="openModal(res, index)"></i>
                   <font-awesome-icon icon="trash" @click="deleteReservation(res.id)" title="Delete" class="action-icon" />
                 </div>
@@ -271,6 +274,47 @@ function goBack() {
     padding: 14px 16px; font-size: 14px; text-align: left;
     vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .passenger-table th:nth-child(2),
+  .passenger-table td:nth-child(2) {
+    width: 130px; /* ReservationID */
+  }
+
+  .passenger-table th:nth-child(3),
+  .passenger-table td:nth-child(3) {
+    width: 160px; /* User */
+  }
+
+  .passenger-table th:nth-child(4),
+  .passenger-table td:nth-child(4) {
+    width: 120px; /* Seat Number */
+  }
+
+  .passenger-table th:nth-child(5),
+  .passenger-table td:nth-child(5) {
+    width: 120px; /* Amount */
+  }
+
+  .passenger-table th:nth-child(6),
+  .passenger-table td:nth-child(6) {
+    width: 120px; /* PaymentID   */
+  }
+  
+  .passenger-table th:nth-child(7),
+  .passenger-table td:nth-child(7) {
+    width: 200px; /* Booking Date */
+  }
+
+  .passenger-table th:nth-child(8),
+  .passenger-table td:nth-child(8) {
+    width: 140px; /* Status */
+  }
+
+  .passenger-table th:nth-child(9),
+  .passenger-table td:nth-child(9) {
+    padding: 0px 40px;
+    width: 140px; /* Action */
+  }
+
   .small-id { font-size: 12px; color: #888; }
   .ticket-row {
     position: relative; border-bottom: 2px dashed #cce4f5;
@@ -282,7 +326,7 @@ function goBack() {
   .ticket-row::before { left: -7px; }
   .ticket-row::after { right: -7px; }
   .action-buttons {
-    display: flex; gap: 8px;
+    display: flex; gap: 8px; padding: 0px 32px;
   }
   .modal {
     position: fixed;
@@ -408,4 +452,27 @@ function goBack() {
   transform: translateX(20px);
   }
   
+  /* Status Badge */
+  .status {
+    display: inline-block;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .status.pending {
+    background-color: #f6b52e;
+    color: white;
+  }
+
+  .status.success {
+    background-color: #34c38f;
+    color: white;
+  }
+
+  .status.failed {
+    background-color: #e74c3c;
+    color: white;
+}
   </style>

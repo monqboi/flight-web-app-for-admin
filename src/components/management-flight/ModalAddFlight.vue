@@ -89,7 +89,7 @@ const formSchema = object({
     time: number().min(1, "Duration time must be greater than 0"), // Use .min() for validation
     stop: number().min(0, "Stop count must be 0 or greater"), // Use .min() for validation
   }),
-  flightPrice: number().min(0, "Duration time must be greater than 0"),
+  flightPrice: number().min(-1, "Duration time must be equal or greater than 0"),
 })
   .refine((data) => data.departure.airport !== data.destination.airport, {
     message: "Departure and destination airports cannot be the same.",
@@ -126,39 +126,42 @@ const form = ref({
 });
 
 watch(
-  () => props.selectedFlightID,
-  () => {
-    if (props.formMode === "edit" && props.selectedFlightID) {
-      const flight = flightStore.getFlightByID(props.selectedFlightID);
+  [() => props.selectedFlightID, () => aircrafts.value],
+  ([flightID, aircraftList]) => {
+    if (props.formMode === "edit" && flightID && aircraftList.length > 0) {
+      const flight = flightStore.getFlightByID(flightID);
       if (flight) {
-        form.value.flightID = flight.flightID;
-        form.value.airlineID = flight.airlineID;
-        form.value.aircraftID = flight.aircraftID;
-        form.value.aircraftName =
-          aircrafts.value.find((a) => a.aircraftID === flight.aircraftID)?.model || "";
+        const stopOverRaw = flight.stopOver ?? [];
+        const stopOverArray = Array.isArray(stopOverRaw)
+          ? stopOverRaw
+          : typeof stopOverRaw === "string"
+          ? stopOverRaw.split(",").map((s) => s.trim())
+          : [];
 
-          form.value.departure = {
+        form.value = {
+          flightID: flight.flightID,
+          airlineID: flight.airlineID,
+          aircraftID: flight.aircraftID,
+          aircraftName:
+            aircraftList.find((a) => a.aircraftID === flight.aircraftID)?.model || "",
+          departure: {
             airport: flight.departure.airport,
             date: flight.departure.date,
             time: flight.departure.time,
-          };
-
-          form.value.destination = {
+          },
+          destination: {
             airport: flight.destination.airport,
             date: flight.destination.date,
             time: flight.destination.time,
-          };
-
-        form.value.duration = {
-          time: flight.duration || 0,
-          stop: flight.stopOver ? flight.stopOver.split(",").length : 0,
+          },
+          duration: {
+            time: flight.duration?.time ?? flight.duration ?? 0,
+            stop: stopOverArray.length,
+          },
+          flightStatus: flight.status || "",
+          stopOvers: stopOverArray,
+          flightPrice: flight.flightPrice ?? 0,
         };
-
-        form.value.stopOvers = flight.stopOver
-          ? flight.stopOver.split(",").map((s) => s.trim())
-          : [];
-
-        form.value.flightStatus = flight.status || "";
       }
     }
   },
@@ -270,6 +273,7 @@ const clearForm = () => {
     },
     flightStatus: "",
     stopOvers: [], 
+    flightPrice: 0,
   };
 };
 
@@ -310,20 +314,6 @@ watch(
       form.value.stopOvers = Array.from({ length: stopCount }, () => "");
     }
   }
-);
-
-watch(
-  () => props.selectedFlightID,
-  () => {
-    if (props.formMode === "edit" && props.selectedFlightID) {
-      const flight = flightStore.getFlightByID(props.selectedFlightID);
-      if (flight) {
-        form.value = JSON.parse(JSON.stringify(flight));
-        form.value.aircraftID = flight.aircraftID;
-      }
-    }
-  },
-  { immediate: true }
 );
 
 </script>
@@ -483,19 +473,19 @@ watch(
                   </option>
                   <option value="add-aircraft">+ Add Aircraft</option>
                 </select>
-                <input
-                    type="number"
-                    placeholder="USD"
-                    min="0"
-                    v-model="form.flightPrice"
-                />
+                  <input
+                      type="number"
+                      placeholder="USD"
+                      min="0"
+                      v-model.number="form.flightPrice"
+                  />
                 <select v-model.number="form.duration.stop"> 
                   <option v-for="stop in [0, 1, 2, 3]" :key="stop" :value="stop">{{ stop }}</option>
                 </select>
                   <input
                     type="number"
                     placeholder="- -"
-                    min="0"
+                    min="-1"
                     v-model.number="form.duration.time"
                   />
                 </div>

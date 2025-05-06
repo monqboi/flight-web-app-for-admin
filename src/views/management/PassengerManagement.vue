@@ -7,20 +7,18 @@ import { formatDate } from '@/utils/flightUtils'
 
 const route = useRoute()
 const router = useRouter()
-const flightID = route.params.flightID
-const airlineID = route.params.airlineID
-
-const passengerStore = usePassengerStore()
-const flightStore = useFlightStore()
-
-const flight = computed(() => flightStore.getFlightByID(flightID))
-
 const searchQuery = ref('')
 const showModal = ref(false)
 const isEditing = ref(false)
 isEditing.value = false
 const editingIndex = ref(null)
 const toggleView = ref(false)
+
+const flightID = route.params.flightID
+const airlineID = route.params.airlineID
+const passengerStore = usePassengerStore()
+const flightStore = useFlightStore()
+const flight = computed(() => flightStore.getFlightByID(flightID))
 
 const form = ref({
   id: null,
@@ -132,7 +130,7 @@ function goBack() {
         </div>
         <div class="search-actions">
           <input class="search-box" v-model="searchQuery" placeholder="🔍 Search Passenger" />
-          <button class="add-btn" @click="openModal()">+ Add</button>
+          <!--<button class="add-btn" @click="openModal()">+ Add</button>-->
         </div>
       </div>
 
@@ -154,8 +152,8 @@ function goBack() {
           </thead>
           <tbody>
             <tr v-for="(p, index) in filtered" :key="p.PassengerID" class="ticket-row">
-              <td>{{ p.UserID }}<br><span class="small-id">#{{ p.Username }}</span></td>
-              <td>{{ p.PassengerID }}</td><!--<td>{{ p.SeatNumber }}</td>-->
+              <td>{{ p.Username }}<br><span class="small-id">#{{ p.Username }}</span></td>
+              <td>#{{ p.PassengerID }}</td><!--<td>{{ p.SeatNumber }}</td>-->
               <td>{{ p.Firstname }} {{ p.Middlename }} {{ p.Lastname }}</td>
               <td>{{ p.PassportNumber }}</td>
               <td>{{ p.Nationality }}</td>
@@ -225,7 +223,7 @@ function goBack() {
   .view-switch span.active { color: #2c4c65; }
   .search-actions { display: flex; align-items: center; gap: 10px; }
   .search-box {
-    padding: 8px 14px; border-radius: 16px; border: 1px solid #ccc; min-width: 240px;
+    padding: 8px 14px; border-radius: 16px; border: 1px solid #ccc; min-width: 320px;
   }
   .add-btn {
     background-color: #f6b52e; color: white; border: none;

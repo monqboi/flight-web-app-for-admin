@@ -110,7 +110,7 @@ router.post("/", async (req, res) => {
       duration,
       aircraftID,
       status,
-      price
+      price,
     } = req.body;
 
     const departureDateTime = combineDateTime(departureDate, departureTime);
@@ -136,7 +136,7 @@ router.post("/", async (req, res) => {
       duration,
       aircraftID,
       capitalize(status),
-      price
+      price   
     ];
 
     const [result] = await db.query(query, values);
@@ -181,7 +181,7 @@ router.put("/:id", async (req, res) => {
         StopOver = ?, 
         Duration = ?, 
         AircraftID = ?, 
-        Status = ?
+        Status = ?,
         Price = ?
       WHERE FlightID = ?
     `;
