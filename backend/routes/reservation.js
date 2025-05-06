@@ -126,24 +126,29 @@ router.get('/:id', async (req, res) => {
 
 // GET /api/reservation?paidOnly=true
 router.get('/', async (req, res) => {
+  const { paidOnly, flightID } = req.query;
+  let sql = `
+    SELECT r.*, p.Status AS paymentStatus
+    FROM Reservation r
+    LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
+  `;
+  const params = [];
+
+  if (paidOnly === 'true' && flightID) {
+    sql += ' WHERE p.Status = "Successful" AND r.FlightID = ?';
+    params.push(flightID);
+  } else if (paidOnly === 'true') {
+    sql += ' WHERE p.Status = "Successful"';
+  } else if (flightID) {
+    sql += ' WHERE r.FlightID = ?';
+    params.push(flightID);
+  }
+
   try {
-    const { paidOnly } = req.query;
-
-    let sql = `
-      SELECT r.ReservationID, r.SeatID, r.UserID, r.FlightID, r.Status, r.BookingDate,
-             p.Status as PaymentStatus
-      FROM Reservation r
-      LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
-    `;
-
-    if (paidOnly === 'true') {
-      sql += ` WHERE p.Status = 'Successful' `;
-    }
-
-    const [rows] = await db.query(sql);
+    const [rows] = await db.query(sql, params);
     res.json(rows);
   } catch (err) {
-    console.error('Error fetching reservations:', err);
+    console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });

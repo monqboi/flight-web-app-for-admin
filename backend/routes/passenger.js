@@ -5,44 +5,44 @@ const router = express.Router();
 
 // ------------- Passenger -------------
 
-// Get all passengers
-router.get("/", async (req, res) => {
-  try {
-    const [rows] = await db.query(`
-      SELECT 
-        p.PassengerID,
-        p.ReservationID,
-        p.SeatID,
-        p.Firstname,
-        p.Middlename,
-        p.Lastname,
-        p.Nationality,
-        p.PassportNumber,
-        p.Address,
-        u.Username,
-        u.UserID,
-        s.SeatNumber
-      FROM Passenger p
-      JOIN Reservation r ON p.ReservationID = r.ReservationID
-      JOIN User u ON r.UserID = u.UserID
-      JOIN Seat s ON r.SeatID = s.SeatID
-    `);
+// Get all passengers from Flight
+router.get('/', async (req, res) => {
+  const { flightID } = req.query;
 
-    res.json(rows.map(row => ({
-      id: row.PassengerID,
-      reservationId: row.ReservationID,
-      seat: row.SeatNumber,
-      seatID: row.SeatID,
-      userId: row.UserID,
-      username: row.Username,
-      fullname: `${row.Firstname} ${row.Middlename} ${row.Lastname}`.replace(/\s+/g, ' ').trim(),
-      nationality: row.Nationality,
-      passport: row.PassportNumber,
-      address: row.Address
-    })));
+  try {
+    let sql = `
+      SELECT 
+        pa.PassengerID,
+        pa.ReservationID,
+        pa.SeatID,
+        pa.Firstname,
+        pa.Middlename,
+        pa.Lastname,
+        pa.Nationality,
+        pa.Birth,
+        pa.PassportNumber,
+        pa.Address,
+        u.UserID,
+        u.Username,
+        s.SeatNumber
+      FROM Passenger pa
+      JOIN Reservation r ON pa.ReservationID = r.ReservationID
+      JOIN User u ON r.UserID = u.UserID
+      JOIN Seat s ON pa.SeatID = s.SeatID
+    `;
+
+    const params = [];
+
+    if (flightID) {
+      sql += ` WHERE r.FlightID = ?`;
+      params.push(flightID);
+    }
+
+    const [rows] = await db.query(sql, params);
+    res.json(rows);
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Database error");
+    console.error('Failed to load passengers:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 

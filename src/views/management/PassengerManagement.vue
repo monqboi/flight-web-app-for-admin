@@ -1,20 +1,122 @@
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { usePassengerStore } from '@/stores/passengerStore'
+import { useFlightStore } from '@/stores/flightStore'
+import { formatDate } from '@/utils/flightUtils'
+
+const route = useRoute()
+const router = useRouter()
+const flightID = route.params.flightID
+const airlineID = route.params.airlineID
+
+const passengerStore = usePassengerStore()
+const flightStore = useFlightStore()
+
+const flight = computed(() => flightStore.getFlightByID(flightID))
+
+const searchQuery = ref('')
+const showModal = ref(false)
+const isEditing = ref(false)
+isEditing.value = false
+const editingIndex = ref(null)
+const toggleView = ref(false)
+
+const form = ref({
+  id: null,
+  userId: '',
+  reservationId: '',
+  seat: '',
+  firstName: '',
+  middleName: '',
+  lastName: '',
+  nationality: '',
+  birth: '',
+  passport: '',
+  address: ''
+})
+
+onMounted(async () => {
+  await flightStore.loadFlights()
+  await passengerStore.loadPassengers(flightID)
+})
+
+const filtered = computed(() => {
+  const q = searchQuery.value.toLowerCase()
+  return passengerStore.passengers.filter(p =>
+    (p.Username || '').toLowerCase().includes(q) ||
+    (`${p.Firstname} ${p.Lastname}` || '').toLowerCase().includes(q) ||
+    (p.SeatNumber || '').toString().includes(q)
+  )
+})
+
+function switchView() {
+  if (toggleView.value) {
+    router.push({ name: 'FlightReservation', params: { flightID, airlineID } })
+  } else {
+    router.push({ name: 'PassengerManagement', params: { flightID, airlineID } })
+  }
+}
+
+async function openModal(p = null, idx = null) {
+  await passengerStore.loadValidReservations(flightID)
+  if (p) {
+    isEditing.value = true
+    editingIndex.value = idx
+    form.value = { ...p }
+  } else {
+    isEditing.value = false
+    editingIndex.value = null
+    form.value = {
+      reservationId: '',
+      seat: '',
+      firstName: '',
+      middleName: '',
+      lastName: '',
+      nationality: '',
+      birth: '',
+      passport: '',
+      address: ''
+    }
+  }
+  showModal.value = true
+}
+
+function closeModal() {
+  showModal.value = false
+}
+
+async function savePassenger() {
+  await passengerStore.savePassenger(form.value, isEditing.value)
+  showModal.value = false
+}
+
+async function deletePassenger(id) {
+  if (confirm('Delete this passenger?')) {
+    await passengerStore.deletePassenger(id)
+  }
+}
+
+function goBack() {
+  router.back()
+}
+</script>
+
 <template>
   <div class="layout">
-    <Sidebar />
     <main class="main-content">
-      <!-- HEADER SECTION -->
       <div class="flight-header">
         <button class="back-button" @click="goBack">←</button>
         <div class="flight-date-info">
-          <span class="date">Mar 09, 2025</span>
+          <span class="date">{{ formatDate(flight.departure.date) }}</span>
           <div class="flight-route">
             <img src="/src/assets/plane-fly.png" />
-            <span class="airport">BKK</span>
-            <span class="time">18:00</span>
+            <span class="airport">{{ flight.departure.airport }}</span>
+            <span class="time">{{ flight.departure.time }}</span>
             <img src="/src/assets/fly-duration.png" class="flight-arrow" />
             <img src="/src/assets/plane-land.png" />
-            <span class="airport">CNX</span>
-            <span class="time">18:00</span>
+            <span class="airport">{{ flight.destination.airport }}</span>
+            <span class="time">{{ flight.destination.time }}</span>
           </div>
         </div>
         <div class="flight-mode-toggle">
@@ -34,15 +136,15 @@
         </div>
       </div>
 
-      <!-- TABLE -->
       <div class="payment-table">
         <table class="passenger-table">
           <thead>
             <tr>
               <th class="spacer-col"></th>
-              <th>User</th>
-              <th>SeatID</th>
+              <th>UserID</th>
+              <th>Seat Number</th>
               <th>Full Name</th>
+              <th>Passport No.</th>
               <th>Nationality</th>
               <th>Birth</th>
               <th>Address</th>
@@ -51,17 +153,18 @@
             </tr>
           </thead>
           <tbody>
-            <tr v-for="(p, index) in filtered" :key="p.id" class="ticket-row">
-              <td>{{ p.username }}<br><span class="small-id">#{{ p.userId }}</span></td>
-              <td>{{ p.seat }}</td>
-              <td>{{ p.fullname }}</td>
-              <td>{{ p.nationality }}</td>
-              <td>{{ p.birth }}</td>
-              <td>{{ p.address }}</td>
+            <tr v-for="(p, index) in filtered" :key="p.PassengerID" class="ticket-row">
+              <td>{{ p.UserID }}<br><span class="small-id">#{{ p.Username }}</span></td>
+              <td>{{ p.PassengerID }}</td><!--<td>{{ p.SeatNumber }}</td>-->
+              <td>{{ p.Firstname }} {{ p.Middlename }} {{ p.Lastname }}</td>
+              <td>{{ p.PassportNumber }}</td>
+              <td>{{ p.Nationality }}</td>
+              <td>{{ formatDate(flight.departure.date) }}</td><!--<td>{{ p.Birth }}</td>-->
+              <td>{{ p.Address }}</td>
               <td>
                 <div class="action-buttons">
                   <i class="fa fa-edit" @click="openModal(p, index)"></i>
-                  <font-awesome-icon icon="trash"  @click="deletePassenger(p.id)" />
+                  <font-awesome-icon icon="trash" @click="deletePassenger(p.PassengerID)" />
                 </div>
               </td>
             </tr>
@@ -69,7 +172,6 @@
         </table>
       </div>
 
-      <!-- MODAL -->
       <div v-if="showModal" class="modal">
         <div class="modal-content user-form">
           <h3>{{ isEditing ? 'Modify Passenger' : 'Add Passenger' }}</h3>
@@ -77,23 +179,19 @@
             <input v-model="form.reservationId" placeholder="Reservation ID" />
             <input v-model="form.seat" placeholder="Seat ID" />
           </div>
-
           <div class="form-row">
             <input v-model="form.firstName" placeholder="First Name" />
             <input v-model="form.middleName" placeholder="Middle Name" />
             <input v-model="form.lastName" placeholder="Last Name" />
           </div>
-
           <div class="form-row">
             <input v-model="form.nationality" placeholder="Nationality" />
             <input type="date" v-model="form.birth" />
             <input v-model="form.passport" placeholder="Passport Number" />
           </div>
-
           <div class="form-row">
             <input v-model="form.address" placeholder="Address" />
           </div>
-
           <div class="modal-actions">
             <button class="save-btn" @click="savePassenger">Save ✔</button>
             <button class="discard-btn" @click="closeModal">Discard ✖</button>
@@ -104,176 +202,7 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
-import { useRoute } from 'vue-router';
-import axios from 'axios'
-
-const route = useRoute()
-const router = useRouter()
-const flightID = route.params.flightID;
-const airlineID = route.params.airlineID;
-const validReservations = ref([]);
-
-const toggleView = ref(false)
-const searchQuery = ref('')
-const showModal = ref(false)
-const isEditing = ref(false)
-const editingIndex = ref(null)
-const form = ref({
-  id: null,
-  userId: '',
-  reservationId: '',
-  seat: '',
-  firstName: '',
-  middleName: '',
-  lastName: '',
-  nationality: '',
-  birth: '',
-  passport: '',
-  address: ''
-})
-
-const passengers = ref([])
-
-async function loadPassengers() {
-  try {
-    const res = await axios.get('/api/passenger')
-    passengers.value = res.data
-  } catch (err) {
-    console.error('Failed to load passengers:', err)
-  }
-}
-
-onMounted(() => {
-  loadPassengers()
-})
-
-const filtered = computed(() => {
-  const q = searchQuery.value.toLowerCase()
-  return passengers.value.filter(p =>
-    p.username.toLowerCase().includes(q) ||
-    p.fullname.toLowerCase().includes(q) ||
-    p.seat.includes(q)
-  )
-})
-
-function switchView() {
-const flightID = route.params.flightID;  // Get flightId from route
-const airlineID = route.params.airlineID;  // Get airlineID from route
-
-if (toggleView.value) {
-  router.push({
-    name: 'FlightReservation',  // Ensure this route name is correct
-    params: {
-      flightID: flightID,  // Pass flightId as a route parameter
-      airlineID: airlineID  // Pass airlineID as a route parameter
-    }
-  });
-} else {
-  router.push({
-    name: 'PassengerManagement',  // Ensure this route name is correct
-    params: {
-      flightID: flightID,  // Pass flightId as a route parameter
-      airlineID: airlineID  // Pass airlineID as a route parameter
-    }
-  });
-}
-}
-
-
-async function openModal(p = null, idx = null) {
-  try {
-    const res = await axios.get('/api/reservation?paidOnly=true');
-    validReservations.value = res.data;
-
-    if (p) {
-      isEditing.value = true;
-      editingIndex.value = idx;
-      form.value = { ...p };
-    } else {
-      isEditing.value = false;
-      editingIndex.value = null;
-      form.value = {
-        reservationId: '',
-        seat: '',
-        firstName: '',
-        middleName: '',
-        lastName: '',
-        nationality: '',
-        birth: '',
-        passport: '',
-        address: ''
-      };
-    }
-
-    showModal.value = true;
-  } catch (err) {
-    console.error('Failed to load valid reservations:', err);
-  }
-}
-
-function closeModal() {
-  showModal.value = false
-}
-
-async function savePassenger() {
-  try {
-    // Get Payment Status of Reservation
-    const reservationId = form.value.reservationId;
-    const res = await axios.get(`/api/reservation/${reservationId}`);
-    const reservation = res.data;
-
-    if (!reservation || reservation.paymentStatus !== 'Successful') {
-      alert('Cannot add passenger. Payment not completed for this reservation.');
-      return;
-    }
-
-    // Proceed to save passenger
-    const payload = {
-      reservationId: form.value.reservationId,
-      seatID: form.value.seat,
-      firstName: form.value.firstName,
-      middleName: form.value.middleName,
-      lastName: form.value.lastName,
-      nationality: form.value.nationality,
-      birth: form.value.birth,
-      passport: form.value.passport,
-      address: form.value.address
-    };
-
-    if (isEditing.value && editingIndex.value !== null) {
-      await axios.put(`/api/passenger/${form.value.id}`, payload);
-    } else {
-      await axios.post('/api/passenger', payload);
-    }
-    await loadPassengers();
-    closeModal();
-  } catch (err) {
-    alert('Error saving passenger');
-    console.error(err);
-  }
-}
-
-async function deletePassenger(id) {
-  if (confirm("Delete this passenger?")) {
-    try {
-      await axios.delete(`/api/passenger/${id}`)
-      await loadPassengers()
-    } catch (err) {
-      alert("Failed to delete")
-      console.error(err)
-    }
-  }
-}
-
-function goBack() {
-  router.back()
-}
-</script>
-  
-  <style scoped>
+<style scoped>
   
   .layout { display: flex; min-height: 100vh; }
   .flight-header {
@@ -303,14 +232,40 @@ function goBack() {
     padding: 10px 18px; border-radius: 10px; font-weight: bold; cursor: pointer;
   }
   .passenger-table {
-    table-layout: fixed; width: 100%; border-collapse: collapse;
-    background-color: white; border-radius: 12px;
-    overflow: hidden; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+    width: 100%;
+    border-collapse: collapse;
+    background-color: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+    table-layout: auto; /* เปลี่ยนจาก fixed เป็น auto */
   }
+
   .passenger-table th, .passenger-table td {
-    padding: 14px 16px; font-size: 14px; text-align: left;
-    vertical-align: middle; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: 14px 16px;
+    font-size: 14px;
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: visible; /* แสดงค่าทั้งหมด */
+    text-overflow: unset;
   }
+
+  .passenger-table th:nth-child(3),
+  .passenger-table td:nth-child(3) {
+    width: 160px; /* Full Name */
+  }
+  
+  .passenger-table th:nth-child(4),
+  .passenger-table td:nth-child(4) {
+    width: 160px; /* Passport Number */
+  }
+
+  .passenger-table th:nth-child(7),
+  .passenger-table td:nth-child(7) {
+    width: 160px; /* Address */
+  }
+
   .small-id { font-size: 12px; color: #888; }
   .ticket-row {
     position: relative; border-bottom: 2px dashed #cce4f5;
