@@ -57,7 +57,7 @@ function openModal(res = null, index = null) {
     form.value = {
       id: res.id,
       userId: res.userId,
-      flightId: route.params.flightId,
+      flightId: flightID,
       seatNumber: res.seatNumber,
       status: res.status,
       bookingDate: res.bookingDate.split('T')[0] + 'T' + res.bookingDate.split('T')[1].slice(0, 5)
@@ -68,9 +68,9 @@ function openModal(res = null, index = null) {
       id: null,
       userId: '',
       seatNumber: '',
-      status: 'Pending',
+      status: '',
       bookingDate: '',
-      flightId: route.params.flightId
+      flightId: flightID
     };
     editIndex.value = null;
   }
@@ -103,7 +103,7 @@ async function saveReservation() {
     }
     closeModal();
   } catch (err) {
-    alert("Failed to save reservation");
+    alert(err.message); 
     console.error(err);
   }
 }
@@ -111,7 +111,7 @@ async function saveReservation() {
 async function deleteReservation(id) {
   if (confirm('Delete this reservation?')) {
     try {
-      await reservationStore.deleteReservation(id);
+      await reservationStore.deleteReservation(id, flightID);
     } catch (err) {
       alert('Failed to delete');
       console.error(err);
@@ -214,7 +214,7 @@ function goBack() {
           <div class="form-row">
             <input type="number" v-model="form.userId" placeholder="User ID" />
             <input type="text" v-model="form.seatNumber" placeholder="Seat Number" />
-            <input type="number" v-model="form.flightId" placeholder="Flight ID" />
+            <input type="number" v-model="form.flightId" disabled />
           </div>
 
           <div class="form-row">

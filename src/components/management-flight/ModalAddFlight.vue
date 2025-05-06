@@ -475,7 +475,7 @@ watch(
                 </select>
                   <input
                       type="number"
-                      placeholder="USD"
+                      placeholder="THB"
                       min="0"
                       v-model.number="form.flightPrice"
                   />

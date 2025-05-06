@@ -46,7 +46,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Add new passenger
+/* Add new passenger
 router.post("/", async (req, res) => {
   const {
     reservationId, seatID, firstName, middleName, lastName, birth,
@@ -66,6 +66,7 @@ router.post("/", async (req, res) => {
     res.status(500).send("Failed to insert passenger");
   }
 });
+*/
 
 // Update passenger
 router.put("/:id", async (req, res) => {

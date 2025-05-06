@@ -30,7 +30,7 @@ If Reservation Status == "Canceled" && Payment != "Successful"
     - Seat's availibity is 'Yes'
 */
 
-// Get all Reservations
+// Get reservations only for a specific flight (cleaner route)
 router.get("/", async (req, res) => {
   try {
     const flightID = req.query.flightID;
@@ -76,12 +76,10 @@ router.post("/", async (req, res) => {
       seatNumber,
       status,
       bookingDate,
-      paymentMethod,
-      paymentDate,
       passengerInfo
     } = req.body;
 
-    if (!userID || !flightID || !seatNumber || !status || !bookingDate || !paymentMethod || !paymentDate) {
+    if (!userID || !flightID || !seatNumber || !status || !bookingDate) {
       return res.status(400).send("Missing required fields");
     }
 
@@ -89,29 +87,30 @@ router.post("/", async (req, res) => {
     const [userResult] = await db.query("SELECT * FROM User WHERE UserID = ?", [userID]);
     if (userResult.length === 0) return res.status(404).send("User not found");
 
-    // Get seat ID
+    // Get seatID From seatNumber
     const [seatResult] = await db.query(
-      "SELECT SeatID, SeatClass FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Available = 'Yes'",
+      "SELECT SeatID, SeatClass, Available FROM Seat WHERE SeatNumber = ? AND FlightID = ?",
       [seatNumber, flightID]
     );
-    if (seatResult.length === 0) return res.status(400).send("Seat not available");
+    if (seatResult.length === 0) return res.status(404).send("Seat not found for this flight");
 
     const seatID = seatResult[0].SeatID;
     const seatClass = seatResult[0].SeatClass;
+    const isAvailable = seatResult[0].Available === 'Yes';
+    if (!isAvailable) return res.status(400).json("Seat is already reserved");
 
-    // Get price per flight
+    // Pricing logic
     const [flightResult] = await db.query("SELECT Price FROM Flight WHERE FlightID = ?", [flightID]);
     if (flightResult.length === 0) return res.status(404).send("Flight not found");
 
     const basePrice = flightResult[0].Price;
 
-    // Get mutiplier price per seatclass
     const [multiplierResult] = await db.query("SELECT Multiplier FROM SeatMultiplier WHERE SeatClass = ?", [seatClass]);
     if (multiplierResult.length === 0) return res.status(404).send("Seat multiplier not found");
 
     const multiplier = multiplierResult[0].Multiplier;
     const amount = basePrice * multiplier;
-    
+
     // Create reservation
     const [resResult] = await db.query(
       "INSERT INTO Reservation (UserID, FlightID, SeatID, Status, BookingDate) VALUES (?, ?, ?, ?, ?)",
@@ -123,10 +122,9 @@ router.post("/", async (req, res) => {
 
     await db.query(
       "INSERT INTO Payment (ReservationID, UserID, Amount, PaymentMethod, PaymentDate, Status) VALUES (?, ?, ?, ?, ?, ?)",
-      [reservationID, userID, amount, paymentMethod, paymentDate, paymentStatus]
+      [reservationID, userID, amount, null, null, paymentStatus]
     );
 
-    // Update Seat Available 
     await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ?", [seatID]);
 
     if (status === 'Confirmed') {
@@ -140,7 +138,6 @@ router.post("/", async (req, res) => {
         PassportNumber = null
       } = passengerInfo || {};
 
-      // Create passenger
       await db.query(
         `INSERT INTO Passenger (ReservationID, SeatID, Firstname, Middlename, Lastname, Nationality, BirthDate, Address, PassportNumber)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -149,11 +146,12 @@ router.post("/", async (req, res) => {
     }
 
     res.status(201).json({
-      message: "Reservation, payment, and optional passenger created.",
+      message: "Reservation created successfully",
       reservationID,
       seatID,
       amount
     });
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Database error");
@@ -170,31 +168,37 @@ router.put("/:id", async (req, res) => {
       seatNumber,
       status,
       bookingDate,
-      paymentMethod,
-      paymentDate,
       passengerInfo
     } = req.body;
 
-    if (!userID || !flightID || !seatNumber || !status || !bookingDate || !paymentMethod || !paymentDate) {
+    if (!userID || !flightID || !seatNumber || !status || !bookingDate) {
       return res.status(400).send("Missing required fields");
     }
 
+    // Check user
     const [userResult] = await db.query("SELECT * FROM User WHERE UserID = ?", [userID]);
     if (userResult.length === 0) return res.status(404).send("User not found");
 
+    // Get SeatID, SeatClass, and Available from seatNumber
     const [seatResult] = await db.query(
-      "SELECT SeatID, SeatClass FROM Seat WHERE SeatNumber = ? AND FlightID = ?",
+      "SELECT SeatID, SeatClass, Available FROM Seat WHERE SeatNumber = ? AND FlightID = ?",
       [seatNumber, flightID]
     );
-    if (seatResult.length === 0) return res.status(400).send("Seat not available");
+    if (seatResult.length === 0) return res.status(404).send("Seat not found for this flight");
 
     const seatID = seatResult[0].SeatID;
+    const isAvailable = seatResult[0].Available === 'Yes';
+    if (!isAvailable) return res.status(400).json({ message: "Seat is already reserved" });
+
     const seatClass = seatResult[0].SeatClass;
 
+    // Get Flight Price
     const [flightResult] = await db.query("SELECT Price FROM Flight WHERE FlightID = ?", [flightID]);
     if (flightResult.length === 0) return res.status(404).send("Flight not found");
 
     const basePrice = flightResult[0].Price;
+
+    // Get Seat Multiplier
     const [multiplierResult] = await db.query("SELECT Multiplier FROM SeatMultiplier WHERE SeatClass = ?", [seatClass]);
     if (multiplierResult.length === 0) return res.status(404).send("Seat multiplier not found");
 
@@ -209,21 +213,21 @@ router.put("/:id", async (req, res) => {
 
     const paymentStatus = status === 'Confirmed' ? 'Successful' : 'Pending';
 
-    // Update or insert payment
+    // Update or Insert Payment
     const [paymentCheck] = await db.query("SELECT * FROM Payment WHERE ReservationID = ?", [reservationID]);
     if (paymentCheck.length > 0) {
       await db.query(
-        "UPDATE Payment SET UserID = ?, Amount = ?, PaymentMethod = ?, PaymentDate = ?, Status = ? WHERE ReservationID = ?",
-        [userID, amount, paymentMethod, paymentDate, paymentStatus, reservationID]
+        "UPDATE Payment SET UserID = ?, Amount = ?, Status = ? WHERE ReservationID = ?",
+        [userID, amount, paymentStatus, reservationID]
       );
     } else {
       await db.query(
         "INSERT INTO Payment (ReservationID, UserID, Amount, PaymentMethod, PaymentDate, Status) VALUES (?, ?, ?, ?, ?, ?)",
-        [reservationID, userID, amount, paymentMethod, paymentDate, paymentStatus]
+        [reservationID, userID, amount, null, null, paymentStatus]
       );
     }
 
-    // Update Seat
+    // Update Seat to unavailable
     await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ?", [seatID]);
 
     if (status === 'Confirmed') {
@@ -238,6 +242,7 @@ router.put("/:id", async (req, res) => {
       } = passengerInfo || {};
 
       const [existingPassenger] = await db.query("SELECT * FROM Passenger WHERE ReservationID = ?", [reservationID]);
+
       if (existingPassenger.length > 0) {
         await db.query(
           `UPDATE Passenger SET SeatID = ?, Firstname = ?, Middlename = ?, Lastname = ?, Nationality = ?, BirthDate = ?, Address = ?, PassportNumber = ? WHERE ReservationID = ?`,
@@ -259,14 +264,18 @@ router.put("/:id", async (req, res) => {
     if (status === 'Canceled') {
       const [paymentResult] = await db.query("SELECT * FROM Payment WHERE ReservationID = ?", [reservationID]);
       const payment = paymentResult[0];
+
       await db.query("DELETE FROM Passenger WHERE ReservationID = ?", [reservationID]);
+
       if (!payment || payment.Status !== 'Successful') {
         await db.query("DELETE FROM Payment WHERE ReservationID = ?", [reservationID]);
       }
+
       await db.query("UPDATE Seat SET Available = 'Yes' WHERE SeatID = ?", [seatID]);
     }
 
-    res.json({ message: "Reservation updated with logic applied" });
+    res.json({ message: "Reservation updated successfully" });
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Database error on update");

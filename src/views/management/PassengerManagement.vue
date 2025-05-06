@@ -61,20 +61,32 @@ async function openModal(p = null, idx = null) {
   if (p) {
     isEditing.value = true
     editingIndex.value = idx
-    form.value = { ...p }
+    form.value = {
+      id: p.PassengerID,
+      reservationId: p.ReservationID,
+      seat: p.SeatID,
+      firstName: p.Firstname || '',
+      middleName: p.Middlename || '',
+      lastName: p.Lastname || '',
+      nationality: p.Nationality || '',
+      birth: p.BirthDate ? p.BirthDate.split('T')[0] : '', 
+      passport: p.PassportNumber || '',
+      address: p.Address || ''
+    }
   } else {
     isEditing.value = false
     editingIndex.value = null
     form.value = {
-      reservationId: '',
-      seat: '',
-      firstName: '',
-      middleName: '',
-      lastName: '',
-      nationality: '',
-      birth: '',
-      passport: '',
-      address: ''
+      id: p.PassengerID,
+      reservationId: p.ReservationID,
+      seat: p.SeatID,
+      firstName: p.Firstname || '',
+      middleName: p.Middlename || '',
+      lastName: p.Lastname || '',
+      nationality: p.Nationality || '',
+      birth: p.BirthDate ? p.BirthDate.split('T')[0] : '', 
+      passport: p.PassportNumber || '',
+      address: p.Address || ''
     }
   }
   showModal.value = true
@@ -139,8 +151,8 @@ function goBack() {
           <thead>
             <tr>
               <th class="spacer-col"></th>
-              <th>User</th>
               <th>Seat Number</th>
+              <th>User</th>
               <th>Full Name</th>
               <th>Passport No.</th>
               <th>Nationality</th>
@@ -152,13 +164,13 @@ function goBack() {
           </thead>
           <tbody>
             <tr v-for="(p, index) in filtered" :key="p.PassengerID" class="ticket-row">
-              <td>{{ p.Username }}<br><span class="small-id">#{{ p.Username }}</span></td>
-              <td>#{{ p.PassengerID }}</td><!--<td>{{ p.SeatNumber }}</td>-->
-              <td>{{ p.Firstname }} {{ p.Middlename }} {{ p.Lastname }}</td>
-              <td>{{ p.PassportNumber }}</td>
-              <td>{{ p.Nationality }}</td>
-              <td>{{ formatDate(p.BirthDate) }}</td>
-              <td>{{ p.Address }}</td>
+              <td>#{{ p.SeatNumber }}</td>
+              <td>{{ p.Username }}<br><span class="small-id">#{{ p.UserID }}</span></td>
+              <td>{{ (p.Firstname || '') + ' ' + (p.Middlename || '-') + ' ' + (p.Lastname || '') }}</td>
+              <td>{{ p.PassportNumber || '-' }}</td>
+              <td>{{ p.Nationality || '-' }}</td>
+              <td>{{ p.BirthDate ? formatDate(p.BirthDate) : '-' }}</td>
+              <td>{{ p.Address || '-' }}</td>
               <td>
                 <div class="action-buttons">
                   <i class="fa fa-edit" @click="openModal(p, index)"></i>
@@ -174,8 +186,8 @@ function goBack() {
         <div class="modal-content user-form">
           <h3>{{ isEditing ? 'Modify Passenger' : 'Add Passenger' }}</h3>
           <div class="form-row">
-            <input v-model="form.reservationId" placeholder="Reservation ID" />
-            <input v-model="form.seat" placeholder="Seat ID" />
+            <input v-model="form.reservationId" placeholder="Reservation ID" disabled />
+            <input v-model="form.seat" placeholder="Seat Number" disabled />
           </div>
           <div class="form-row">
             <input v-model="form.firstName" placeholder="First Name" />

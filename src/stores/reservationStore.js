@@ -21,17 +21,27 @@ export const useReservationStore = defineStore('reservation', {
       return res.data
     },
     async createReservation(data) {
-      const res = await axios.post('/api/reservation', data)
-      await this.loadReservations()
-      return res.data
+      try {
+        const res = await axios.post('/api/reservation', data)
+        await this.loadReservations(data.flightID)
+        return res.data
+      } catch (err) {
+        const message = err.response?.data || 'Failed to create reservation'
+        throw new Error(message)
+      }
     },
     async updateReservation(id, data) {
-      await axios.put(`/api/reservation/${id}`, data)
-      await this.loadReservations()
+      try {
+        await axios.put(`/api/reservation/${id}`, data)
+        await this.loadReservations(data.flightID) 
+      } catch (err) {
+        const message = err.response?.data || 'Failed to update reservation'
+        throw new Error(message)
+      }
     },
-    async deleteReservation(id) {
+    async deleteReservation(id, flightID) {
       await axios.delete(`/api/reservation/${id}`)
-      await this.loadReservations()
+      await this.loadReservations(flightID)
     }
   }
 })

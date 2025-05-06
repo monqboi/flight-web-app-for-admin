@@ -1,8 +1,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { usePaymentStore } from '@/stores/paymentStore';
 
-const paymentStore = usePaymentStore();
+const route = useRoute();
+const paymentStore = usePaymentStore(); 
 const searchQuery = ref('');
 const showAddModal = ref(false);
 const editingPayment = ref(false);
@@ -10,14 +12,26 @@ const currentPage = ref(1);
 const paymentsPerPage = 5;
 const statusFilter = ref('');
 
-const form = reactive({
+const flightID = route.params.flightID;
+
+const form = ref({
   id: null,
-  reservationId: '',
   userId: '',
-  date: '',
-  amount: null,
-  status: 'Pending',
-  method: ''
+  flightId: flightID,
+  seatNumber: '',
+  status: '',
+  bookingDate: '',
+  paymentMethod: '', 
+  paymentDate: '',  
+  passengerInfo: {
+    Firstname: '',
+    Middlename: '',
+    Lastname: '',
+    Nationality: '',
+    BirthDate: '',
+    Address: '',
+    PassportNumber: ''
+  }
 });
 
 onMounted(async () => {
@@ -26,8 +40,14 @@ onMounted(async () => {
 
 const filteredPayments = computed(() => {
   return paymentStore.payments.filter(p => {
-    const matchSearch = !searchQuery.value || p.username.toLowerCase().includes(searchQuery.value.toLowerCase());
+    const query = searchQuery.value.toLowerCase();
+    const matchUser = p.username?.toLowerCase().includes(query);
+    const matchUserID = p.userId?.toString().includes(query);
+    const matchReservation = p.reservationId?.toString().includes(query);
+
+    const matchSearch = !query || matchUser || matchUserID || matchReservation;
     const matchStatus = !statusFilter.value || p.status.toLowerCase() === statusFilter.value.toLowerCase();
+
     return matchSearch && matchStatus;
   });
 });
@@ -42,43 +62,72 @@ const totalPages = computed(() => Math.ceil(filteredPayments.value.length / paym
 function openModal(payment = null) {
   if (payment) {
     editingPayment.value = true;
-    Object.assign(form, {
+    form.value = {
       id: payment.id,
       reservationId: payment.reservationId,
       userId: payment.userId,
-      date: payment.date,
       amount: payment.amount,
       status: payment.status,
-      method: payment.status // backend returns method in 'status' field for display
-    });
+      method: payment.method,
+      date: payment.date,
+      flightId: flightID,
+      seatNumber: '',
+      bookingDate: '',
+      paymentMethod: payment.method || '',
+      paymentDate: payment.paymentDate || '',
+      passengerInfo: {
+        Firstname: '',
+        Middlename: '',
+        Lastname: '',
+        Nationality: '',
+        BirthDate: '',
+        Address: '',
+        PassportNumber: ''
+      }
+    };
   } else {
     editingPayment.value = false;
-    Object.assign(form, {
+    form.value = {
       id: null,
       reservationId: '',
       userId: '',
-      date: '',
       amount: null,
       status: 'Pending',
-      method: ''
-    });
+      method: '',
+      date: '',
+      flightId: flightID,
+      seatNumber: '',
+      bookingDate: '',
+      paymentMethod: '',
+      paymentDate: '',
+      passengerInfo: {
+        Firstname: '',
+        Middlename: '',
+        Lastname: '',
+        Nationality: '',
+        BirthDate: '',
+        Address: '',
+        PassportNumber: ''
+      }
+    };
   }
+
   showAddModal.value = true;
 }
 
 async function savePayment() {
   try {
     const payload = {
-      reservationID: parseInt(form.reservationId),
-      userID: parseInt(form.userId),
-      amount: parseFloat(form.amount),
-      paymentMethod: form.method,
-      paymentDate: form.date,
-      status: form.status
+      reservationID: form.value.reservationId,
+      userID: form.value.userId,
+      amount: form.value.amount,
+      paymentMethod: form.value.paymentMethod,
+      paymentDate: form.value.paymentDate,
+      status: form.value.status
     };
 
-    if (editingPayment.value && form.id) {
-      await paymentStore.updatePayment(form.id, payload);
+    if (editingPayment.value && form.value.id) {
+      await paymentStore.updatePayment(form.value.id, payload);
     } else {
       await paymentStore.createPayment(payload);
     }
@@ -104,6 +153,123 @@ function discardPayment() {
   });
 }
 </script>
+
+<template>
+  <div class="admin-card finance-management">
+    <header class="page-header">
+      <div class="left">
+        <h2>All Payments</h2>
+        <p class="subtitle">Manage payment records</p>
+      </div>
+      <div class="right">
+        <div class="search-container">
+          <div class="search-icon">
+            <img src="/search-input.svg" alt="Search Input Icon" />
+          </div>
+          <input
+          type="text"
+            placeholder="Search User"
+            class="search-input"
+            v-model="searchQuery"
+          />
+        </div>
+        <select class="status-filter" v-model="statusFilter">
+          <option value="">All Status</option>
+          <option>Pending</option>
+          <option>Successful</option>
+          <option>Failed</option>
+        </select>
+        <!--<button class="add-btn" @click="openModal()">+ Add</button>-->
+      </div>
+    </header>
+
+    <!-- Payment Table -->
+    <div class="table-section payments">
+      <div class="table-row table-head">
+        <div>Payment ID</div>
+        <div>User</div>
+        <div>Reservation ID</div>
+        <div>Route</div>
+        <div>Date</div>
+        <div>Amount</div>
+        <div>Status</div>
+        <div>Actions</div>
+      </div>
+      <div
+        class="table-row"
+        v-for="payment in paginatedPayments"
+        :key="payment.id"
+      >
+        <div>#{{ payment.id }}</div>
+        <div>{{ payment.username }}<br /><span class="small-id">#{{ payment.userId }}</span></div>
+        <div>#{{ payment.reservationId }}</div>
+        <div>{{ payment.route }}</div>
+        <div>{{ payment.paymentDate || '-' }}</div>
+        <div>{{ payment.amount }}</div>
+        <div>
+          <span :class="['status', payment.status.toLowerCase()]">{{ payment.status }}</span>
+        </div>
+        <button class="action-btn" @click="openModal(payment)">
+          <font-awesome-icon icon="edit" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Add/Edit Payment Modal -->
+    <div class="modal" v-if="showAddModal">
+      <div class="modal-content user-form">
+        <h3>{{ editingPayment ? 'Edit Payment' : 'Add Payment' }}</h3>
+
+        <div class="form-row">
+          <input type="text" v-model="form.reservationId" :disabled="editingPayment" />
+        </div>
+
+        <div class="form-row">
+          <input type="datetime-local" v-model="form.paymentDate" />
+        </div>
+
+        <div class="form-row">
+          <input type="number" v-model="form.amount" placeholder="Amount" />
+          <select v-model="form.status">
+            <option>Pending</option>
+            <option>Successful</option>
+            <option>Failed</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <select v-model="form.paymentMethod" placeholder="Select Payment Method">
+            <option disabled value="">Select Payment Method</option>
+            <option>Credit Card</option>
+            <option>Paypal</option>
+            <option>Bank Transfer</option>
+          </select>
+        </div>
+      
+
+      <div class="modal-actions">
+        <button class="save-btn" @click="savePayment">✔ Save</button>
+        <button class="discard-btn" @click="discardPayment">✖ Discard</button>
+      </div>
+    </div>
+    </div>
+
+
+    <!-- Pagination -->
+    <div class="pagination">
+      <button :disabled="currentPage === 1" @click="currentPage--">«</button>
+      <button 
+        v-for="page in totalPages" 
+        :key="page"
+        :class="{ active: currentPage === page }"
+        @click="currentPage = page"
+      >
+        {{ page }}
+      </button>
+      <button :disabled="currentPage === totalPages" @click="currentPage++">»</button>
+    </div>
+  </div>
+</template>
 
 <style scoped> 
 /* ── Layout for the FinanceManagement view ── */
@@ -203,6 +369,8 @@ function discardPayment() {
   cursor: pointer;
 }
 
+.small-id { font-size: 12px; color: #888; }
+
 /* --- Table Section --- */
 .table-section.payments {
   display: flex;
@@ -212,7 +380,15 @@ function discardPayment() {
 
 .table-row {
   display: grid;
-  grid-template-columns: 2fr 2fr 2fr 2fr 1.5fr 1.5fr 1fr 1fr;
+  grid-template-columns:
+    minmax(80px, 1.5fr)   /* Payment ID */
+    minmax(80px, 1.2fr)  /* User */
+    minmax(100px, 1.5fr)/* Reservation ID */
+    minmax(180px, 3fr)  /* Route */
+    minmax(140px, 2fr)  /* Date */
+    minmax(100px, 1.5fr)/* Amount */
+    minmax(100px, 1.5fr)/* Status */
+    minmax(80px, 1fr);  /* Actions */
   padding: 16px 24px;
   align-items: center;
   font-size: 14px;
@@ -223,12 +399,24 @@ function discardPayment() {
 }
 
 .table-head {
-  font-weight: 600;
+  display: grid;
+  grid-template-columns:
+    minmax(80px, 1.5fr)  /* Payment ID */
+    minmax(80px, 1.2fr) /* User */
+    minmax(100px, 1.5fr)/* Reservation ID */
+    minmax(180px, 3fr)  /* Route */
+    minmax(140px, 2fr)  /* Date */
+    minmax(100px, 1.5fr)/* Amount */
+    minmax(100px, 1.5fr)/* Status */
+    minmax(80px, 1fr);  /* Actions */
+  padding: 16px 24px;
+  align-items: center;
+  font-size: 14px;
   text-transform: uppercase;
-  font-size: 13px;
+  font-weight: 600;
   color: #555;
-  padding: 16px 0;
   border-bottom: 2px solid #e6eff6;
+  position: relative;
 }
 
 .table-row::before,
@@ -267,7 +455,7 @@ function discardPayment() {
   color: white;
 }
 
-.status.success {
+.status.successful {
   background-color: #34c38f;
   color: white;
 }

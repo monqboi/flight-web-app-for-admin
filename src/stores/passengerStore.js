@@ -1,78 +1,78 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-export const usePassengerStore = defineStore('passenger', {
+export const usePassengerStore = defineStore('passengerStore', {
   state: () => ({
     passengers: [],
-    validReservations: [],
-    loading: false,
-    error: null,
+    validReservations: []
   }),
-  
-  getters: {
-    getByFlightID: (state) => (flightID) =>
-      state.passengers.filter(p => +p.FlightID === +flightID),
-
-    searchPassengers: (state) => (query) => {
-      const q = query.toLowerCase()
-      return state.passengers.filter(p =>
-        (p.firstName + ' ' + p.lastName).toLowerCase().includes(q) ||
-        (p.Username || '').toLowerCase().includes(q) ||
-        (p.SeatNumber || '').toLowerCase().includes(q)
-      )
-    }
-  },
-
   actions: {
     async loadPassengers(flightID) {
-      this.loading = true
       try {
-        const res = await axios.get(`/api/passenger?flightID=${flightID}`)
-        this.passengers = res.data
+        const { data } = await axios.get('/api/passenger', {
+          params: { flightID }
+        })
+        this.passengers = data
       } catch (err) {
         console.error('Failed to load passengers:', err)
-        this.error = err
-      } finally {
-        this.loading = false
       }
     },
 
     async loadValidReservations(flightID) {
       try {
-        const res = await axios.get(`/api/reservation?paidOnly=true&flightID=${flightID}`)
-        this.validReservations = res.data
+        const { data } = await axios.get(`/api/reservation/valid`, {
+          params: { flightID }
+        })
+        this.validReservations = data
       } catch (err) {
         console.error('Failed to load valid reservations:', err)
       }
     },
 
-    async addPassenger(payload) {
+    async savePassenger(passenger, isEditing) {
+      const matched = this.validReservations.find(
+        r => r.reservationId === passenger.reservationId && r.seatNumber === passenger.seat
+      )
+      const seatID = matched?.seatId
+    
+      if (!seatID) {
+        console.error('Cannot find seatID for seat:', passenger.seat)
+        alert('Cannot find SeatID from SeatNumber, check reservation')
+        return
+      }
+    
+      const payload = {
+        reservationId: passenger.reservationId,
+        seatID,
+        firstName: passenger.firstName,
+        middleName: passenger.middleName,
+        lastName: passenger.lastName,
+        birth: passenger.birth || null,
+        nationality: passenger.nationality,
+        passport: passenger.passport,
+        address: passenger.address
+      }
+    
       try {
-        await axios.post('/api/passenger', payload)
+        if (isEditing) {
+          await axios.put(`/api/passenger/${passenger.id}`, payload)
+        } else {
+          await axios.post(`/api/passenger`, payload)
+        }
+        await this.loadPassengers()
       } catch (err) {
-        console.error('Failed to add passenger:', err)
+        console.error('Failed to save passenger:', err)
         throw err
       }
     },
 
-    async updatePassenger(id, payload) {
+    async deletePassenger(passengerID) {
       try {
-        await axios.put(`/api/passenger/${id}`, payload)
-        // Optionally update local state
-      } catch (err) {
-        console.error('Failed to update passenger:', err)
-        throw err
-      }
-    },
-
-    async deletePassenger(id) {
-      try {
-        await axios.delete(`/api/passenger/${id}`)
-        this.passengers = this.passengers.filter(p => p.PassengerID !== id)
+        await axios.delete(`/api/passenger/${passengerID}`)
+        this.passengers = this.passengers.filter(p => p.PassengerID !== passengerID)
       } catch (err) {
         console.error('Failed to delete passenger:', err)
-        throw err
       }
-    },
-  },
+    }
+  }
 })

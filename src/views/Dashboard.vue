@@ -14,17 +14,9 @@ import {
   ArcElement,
 } from "chart.js";
 
-import {
-  stats,
-  bookings,
-  chartData,
-  chartOptions,
-  pieChartData,
-  pieChartOptions,
-  legendItemsPopularAirlines,
-  flightsScheduleAnalysisData,
-  flightsScheduleAnalysisOptions,
-} from "@/data/dashboard";
+import { onMounted, computed } from "vue";
+import { useDashboardStore } from "@/stores/dashboardStore";
+import { getFlightDurationHours } from "@/utils/timeFunction";
 
 ChartJS.register(
   Title,
@@ -39,358 +31,369 @@ ChartJS.register(
   LineElement
 );
 
-// สร้างข้อมูลสำหรับกราฟแท่ง (Bar Chart)
-const updatedChartData = {
-  ...chartData,
-  datasets: [
-    {
-      ...chartData.datasets[0],
-      backgroundColor: [
-        ...Array(6).fill(
-          getComputedStyle(document.documentElement).getPropertyValue(
-            "--c-light-blue"
-          )
-        ),
-        getComputedStyle(document.documentElement).getPropertyValue(
-          "--c-orange"
-        ),
-      ],
-    },
-  ],
-};
+// ใช้งาน store
+const dashboardStore = useDashboardStore();
 
-// กราฟโดนัท (Doughnut Chart)
-const updatedPieChartData = {
-  ...pieChartData,
+onMounted(async () => {
+  await dashboardStore.loadDashboard();
+});
+
+// ดึงข้อมูลจาก store
+const stats = computed(() => dashboardStore.stats);
+const bookings = computed(() => dashboardStore.bookings);
+
+// Chart: Reservation Summary
+const chartData = computed(() => dashboardStore.reservationChart || { labels: [], datasets: [] });
+const updatedChartData = computed(() => {
+  const formattedLabels = (chartData.value.labels || []).map(date =>
+    new Date(date).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
+  );
+
+  return {
+    ...chartData.value,
+    labels: formattedLabels,
+    datasets: [
+      {
+        ...chartData.value.datasets?.[0],
+        backgroundColor: [
+          ...Array(formattedLabels.length || 6).fill(
+            getComputedStyle(document.documentElement).getPropertyValue("--c-light-blue")
+          ),
+          getComputedStyle(document.documentElement).getPropertyValue("--c-orange"),
+        ],
+      },
+    ],
+  };
+});
+
+// Chart: Popular Airlines
+const pieChartData = computed(() => dashboardStore.popularAirlinesChart || { labels: [], datasets: [] });
+const updatedPieChartData = computed(() => ({
+  ...pieChartData.value,
   datasets: [
     {
-      ...pieChartData.datasets[0],
+      ...pieChartData.value.datasets?.[0],
       backgroundColor: [
-        getComputedStyle(document.documentElement).getPropertyValue(
-          "--c-orange"
-        ),
+        getComputedStyle(document.documentElement).getPropertyValue("--c-orange"),
         getComputedStyle(document.documentElement).getPropertyValue("--c-navy"),
-        getComputedStyle(document.documentElement).getPropertyValue(
-          "--c-light-blue"
-        ),
+        getComputedStyle(document.documentElement).getPropertyValue("--c-light-blue"),
       ],
     },
   ],
-};
+}));
 
-// กราฟเส้น (Line Chart)
+// Gradient function
 function createGradient(baseColor) {
   return (context) => {
     const chart = context.chart;
     const { ctx, chartArea } = chart;
     if (!chartArea) return;
-    const gradient = ctx.createLinearGradient(
-      0,
-      chartArea.bottom,
-      0,
-      chartArea.top
-    );
+    const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
     gradient.addColorStop(0, `${baseColor}00`);
     gradient.addColorStop(1, `${baseColor}99`);
     return gradient;
   };
 }
 
-const updatedFlightsScheduleAnalysisData = {
-  ...flightsScheduleAnalysisData,
-  datasets: [
-    {
-      ...flightsScheduleAnalysisData.datasets[0],
-      borderColor: getComputedStyle(document.documentElement)
-        .getPropertyValue("--c-orange")
-        .trim(),
-      backgroundColor: createGradient(
-        getComputedStyle(document.documentElement)
-          .getPropertyValue("--c-orange")
-          .trim()
-      ),
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.4,
-      fill: true,
-    },
-    {
-      ...flightsScheduleAnalysisData.datasets[1],
-      borderColor: getComputedStyle(document.documentElement)
-        .getPropertyValue("--c-light-blue")
-        .trim(),
-      backgroundColor: createGradient(
-        getComputedStyle(document.documentElement)
-          .getPropertyValue("--c-light-blue")
-          .trim()
-      ),
-      borderWidth: 2,
-      pointRadius: 0,
-      tension: 0.4,
-      fill: true,
-    },
-  ],
-};
+// Chart: Flight Schedule
+const flightsScheduleData = computed(() => dashboardStore.flightScheduleChart || { labels: [], datasets: [] });
+const updatedFlightsScheduleAnalysisData = computed(() => {
+  const ds = flightsScheduleData.value.datasets || [];
+  const labels = flightsScheduleData.value.labels.map(d =>
+    new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+  );
+  return {
+    labels,
+    datasets: ds.map((dataset, idx) => {
+      const baseColor = getComputedStyle(document.documentElement)
+        .getPropertyValue(idx === 0 ? "--c-orange" : "--c-light-blue")
+        .trim();
+      return {
+        ...dataset,
+        borderColor: baseColor,
+        backgroundColor: createGradient(baseColor),
+        borderWidth: 2,
+        pointRadius: 0,
+        tension: 0.4,
+        fill: true,
+      };
+    }),
+  };
+});
+
+const totalTickets = computed(() => {
+  return chartData.value.datasets?.[0]?.data?.reduce((sum, val) => sum + val, 0) || 0;
+});
+
+// Chart Options (optional - still use original config)
+import {
+  chartOptions,
+  pieChartOptions,
+  legendItemsPopularAirlines,
+  flightsScheduleAnalysisOptions,
+} from "@/data/dashboard";
 </script>
 
-<template>
-  <div class="dashboard">
-    <!-- Stats Cards -->
-    <div class="stats-container">
-      <div
-        v-for="(stat, index) in stats"
-        :key="index"
-        :class="[stat.title.toLowerCase().replace(/\s+/g, '-') + '-stat-card']"
-        class="stat-card"
-      >
-        <div class="curve-lines-top-left">
-          <svg
-            width="40"
-            height="65"
-            viewBox="0 0 40 65"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1 64.3072C1.24399 56.7988 4.80632 40.1223 17.1036 33.4833C32.4753 25.1845 38.5752 10.958 38.5752 0.288208"
-              stroke="#7B8080"
-            />
-          </svg>
-          <svg
-            width="53"
-            height="105"
-            viewBox="0 0 53 105"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1 103.999C1.32961 91.8354 6.14187 64.8194 22.754 54.0642C43.5193 40.6202 51.7594 17.5733 51.7594 0.288208"
-              stroke="#7B8080"
-            />
-          </svg>
-          <svg
-            width="65"
-            height="149"
-            viewBox="0 0 65 151"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1 150.093C1.41094 132.523 7.41064 93.4999 28.1219 77.9646C54.011 58.5455 64.2845 25.2556 64.2845 0.288208"
-              stroke="#7B8080"
-            />
-          </svg>
-        </div>
-
-        <div class="curve-lines-bottom-right">
-          <svg
-            width="40"
-            height="65"
-            viewBox="0 0 40 65"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1 64.3072C1.24399 56.7988 4.80632 40.1223 17.1036 33.4833C32.4753 25.1845 38.5752 10.958 38.5752 0.288208"
-              stroke="#7B8080"
-            />
-          </svg>
-          <svg
-            width="53"
-            height="105"
-            viewBox="0 0 53 105"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1 103.999C1.32961 91.8354 6.14187 64.8194 22.754 54.0642C43.5193 40.6202 51.7594 17.5733 51.7594 0.288208"
-              stroke="#7B8080"
-            />
-          </svg>
-          <svg
-            width="65"
-            height="149"
-            viewBox="0 0 65 151"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M1 150.093C1.41094 132.523 7.41064 93.4999 28.1219 77.9646C54.011 58.5455 64.2845 25.2556 64.2845 0.288208"
-              stroke="#7B8080"
-            />
-          </svg>
-        </div>
-
-        <div class="stat-content">
-          <h3>{{ stat.title }}</h3>
-          <div class="stat-value">{{ stat.value }}</div>
-        </div>
-        <div class="plane-icon" v-if="index !== stats.length - 1">
-          <img
-            src="/dashboard-pic/plane-type-flight.png"
-            alt="Plane Type Flight"
-          />
-        </div>
-        <div class="world-map-icon" v-else>
-          <img src="/dashboard-pic/world-map.png" alt="World Map" />
-        </div>
-      </div>
-    </div>
-
-    <div class="main-content">
-      <div class="bookings-section">
-        <div class="section-header">
-          <h2>All Bookings</h2>
-          <p>Overview of Recent Reservation</p>
-          <button class="more-btn">MORE</button>
-        </div>
-
-        <div class="bookings-list">
-          <div class="bookings-header">
-            <div class="header-left">Desination</div>
-            <div class="header-right">Detail</div>
-          </div>
-          <div
-            v-for="(booking, index) in bookings"
-            :key="index"
-            class="booking-item"
-          >
-            <!-- Left Side: Flight Path -->
-            <div class="booking-left">
-              <div class="departure">
-                <img
-                  src="/dashboard-pic/plane-booking-up.png"
-                  alt="Plane Booking Up"
-                />
-                <div class="departure-info">
-                  <div class="time">{{ booking.departure.time }}</div>
-                  <div class="airport">{{ booking.departure.airport }}</div>
-                </div>
-              </div>
-
-              <div class="flight-line">
-                <p>
-                  {{ booking.stops.time }}
-                </p>
-                <div class="line">
-                  <img
-                    src="/dashboard-pic/icons/plane-icon.png"
-                    alt="Plane Icon"
-                  />
-                </div>
-                <p>
-                  {{ booking.stops.stop }}
-                </p>
-              </div>
-
-              <div class="arrival">
-                <img
-                  src="/dashboard-pic/plane-booking-down.png"
-                  alt="Plane Booking Down"
-                />
-                <div class="arrival-info">
-                  <div class="time">{{ booking.arrival.time }}</div>
-                  <div class="airport">{{ booking.arrival.airport }}</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Right Side: Info -->
-            <div class="booking-right">
-              <div class="booking-airline">{{ booking.airline }}</div>
-              <div class="booking-details">
-                <div class="date">
-                  <img src="/dashboard-pic/icons/calendar-icon.png" alt="Calendar Icon" />
-                  <p>{{ booking.date }}</p>
-                </div>
-                <div class="seats">
-                  <img src="/dashboard-pic/icons/group-icon.png" alt="Group Icon" />
-                  <p>{{ booking.seats }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="reservation-summary">
-        <div class="section-header">
-          <h2>Reservation Summary</h2>
-        </div>
-
-        <div class="summary-header">
-          <div>Now</div>
-          <div class="ticket-sold">4000 <span>Tickets Sold</span></div>
-        </div>
-
-        <Bar
-          class="bar-chart"
-          :data="updatedChartData"
-          :options="chartOptions"
-        />
-      </div>
-    </div>
-
-    <div class="airlines-flight-main-content">
-      <div class="popular-airlines">
-        <div class="section-header">
-          <h2>Popular Airlines</h2>
-        </div>
-
-        <div class="pie-chart-container">
-          <div class="pie-chart-popular-airlines">
-            <div class="pie-chart-warpper">
-              <Doughnut
-                :data="updatedPieChartData"
-                :options="pieChartOptions"
-              />
-            </div>
-          </div>
-          <div class="legend-container">
-            <div
-              class="legend-item"
-              v-for="(item, index) in legendItemsPopularAirlines"
-              :key="index"
+  <template>
+    <div class="dashboard">
+      <!-- Stats Cards -->
+      <div class="stats-container">
+        <div
+          v-for="(stat, index) in stats"
+          :key="index"
+          :class="[stat.title.toLowerCase().replace(/\s+/g, '-') + '-stat-card']"
+          class="stat-card"
+        >
+          <div class="curve-lines-top-left">
+            <svg
+              width="40"
+              height="65"
+              viewBox="0 0 40 65"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <div class="legend-left">
-                <span class="color-box" :class="item.airline"></span>
-                <span class="airline-name">{{ item.name }}</span>
-              </div>
-              <div class="percentage">{{ item.percent }}</div>
-            </div>
+              <path
+                d="M1 64.3072C1.24399 56.7988 4.80632 40.1223 17.1036 33.4833C32.4753 25.1845 38.5752 10.958 38.5752 0.288208"
+                stroke="#7B8080"
+              />
+            </svg>
+            <svg
+              width="53"
+              height="105"
+              viewBox="0 0 53 105"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M1 103.999C1.32961 91.8354 6.14187 64.8194 22.754 54.0642C43.5193 40.6202 51.7594 17.5733 51.7594 0.288208"
+                stroke="#7B8080"
+              />
+            </svg>
+            <svg
+              width="65"
+              height="149"
+              viewBox="0 0 65 151"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M1 150.093C1.41094 132.523 7.41064 93.4999 28.1219 77.9646C54.011 58.5455 64.2845 25.2556 64.2845 0.288208"
+                stroke="#7B8080"
+              />
+            </svg>
+          </div>
+
+          <div class="curve-lines-bottom-right">
+            <svg
+              width="40"
+              height="65"
+              viewBox="0 0 40 65"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M1 64.3072C1.24399 56.7988 4.80632 40.1223 17.1036 33.4833C32.4753 25.1845 38.5752 10.958 38.5752 0.288208"
+                stroke="#7B8080"
+              />
+            </svg>
+            <svg
+              width="53"
+              height="105"
+              viewBox="0 0 53 105"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M1 103.999C1.32961 91.8354 6.14187 64.8194 22.754 54.0642C43.5193 40.6202 51.7594 17.5733 51.7594 0.288208"
+                stroke="#7B8080"
+              />
+            </svg>
+            <svg
+              width="65"
+              height="149"
+              viewBox="0 0 65 151"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M1 150.093C1.41094 132.523 7.41064 93.4999 28.1219 77.9646C54.011 58.5455 64.2845 25.2556 64.2845 0.288208"
+                stroke="#7B8080"
+              />
+            </svg>
+          </div>
+
+          <div class="stat-content">
+            <h3>{{ stat.title }}</h3>
+            <div class="stat-value">{{ stat.value }}</div>
+          </div>
+          <div class="plane-icon" v-if="index !== stats.length - 1">
+            <img
+              src="/dashboard-pic/plane-type-flight.png"
+              alt="Plane Type Flight"
+            />
+          </div>
+          <div class="world-map-icon" v-else>
+            <img src="/dashboard-pic/world-map.png" alt="World Map" />
           </div>
         </div>
       </div>
 
-      <div class="flights-schedule-container">
-        <div class="flights-schedule-header">
+      <div class="main-content">
+        <div class="bookings-section">
           <div class="section-header">
-            <h2>Flights Schedule</h2>
+            <h2>All Bookings</h2>
+            <p>Overview of Recent Reservation</p>
+            <button class="more-btn">MORE</button>
           </div>
-          <div class="section-header-icon">
-            <div class="icon-label">
-              <span class="line-domestic"></span>
-              <p>Domestic</p>
+
+          <div class="bookings-list">
+            <div class="bookings-header">
+              <div class="header-left">Desination</div>
+              <div class="header-right">Detail</div>
             </div>
-            <div class="icon-label">
-              <span class="line-international"></span>
-              <p>International</p>
+            <div
+              v-for="(booking, index) in bookings"
+              :key="index"
+              class="booking-item"
+            >
+              <!-- Left Side: Flight Path -->
+              <div class="booking-left">
+                <div class="departure">
+                  <img
+                    src="/dashboard-pic/plane-booking-up.png"
+                    alt="Plane Booking Up"
+                  />
+                  <div class="departure-info">
+                    <div class="time">{{ booking.departure.time }}</div>
+                    <div class="airport">{{ booking.departure.airport }}</div>
+                  </div>
+                </div>
+
+                <div class="flight-line">
+                  <p>{{ getFlightDurationHours(booking.flight) }} hrs</p>
+                  <div class="line">
+                    <img
+                      src="/dashboard-pic/icons/plane-icon.png"
+                      alt="Plane Icon"
+                    />
+                  </div>
+                </div>
+
+                <div class="arrival">
+                  <img
+                    src="/dashboard-pic/plane-booking-down.png"
+                    alt="Plane Booking Down"
+                  />
+                  <div class="arrival-info">
+                    <div class="time">{{ booking.arrival.time }}</div>
+                    <div class="airport">{{ booking.arrival.airport }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right Side: Info -->
+              <div class="booking-right">
+                <div class="booking-airline">{{ booking.airline }}</div>
+                <div class="booking-details">
+                  <div class="date">
+                    <img src="/dashboard-pic/icons/calendar-icon.png" alt="Calendar Icon" />
+                    <p>{{ booking.date }}</p>
+                  </div>
+                  <div class="seats">
+                    <img src="/dashboard-pic/icons/group-icon.png" alt="Group Icon" />
+                    <p>{{ booking.seats }}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-        <div class="chart-container">
-          <Line
-            class="flights-schedule-analysis"
-            :data="updatedFlightsScheduleAnalysisData"
-            :options="flightsScheduleAnalysisOptions"
+
+        <div class="reservation-summary">
+          <div class="section-header">
+            <h2>Reservation Summary</h2>
+          </div>
+
+          <div class="summary-header">
+            <div>Now</div>
+            <div class="ticket-sold">
+              {{ totalTickets }} <span>Tickets Sold</span>
+            </div>
+          </div>
+
+          <Bar
+            class="bar-chart"
+            :data="updatedChartData"
+            :options="chartOptions"
           />
         </div>
       </div>
+
+      <div class="airlines-flight-main-content">
+        <div class="popular-airlines">
+          <div class="section-header">
+            <h2>Popular Airlines</h2>
+          </div>
+
+          <div class="pie-chart-container">
+            <div class="pie-chart-popular-airlines">
+              <div class="pie-chart-warpper">
+                <Doughnut
+                  :data="updatedPieChartData"
+                  :options="pieChartOptions"
+                />
+              </div>
+            </div>
+            <div class="legend-container">
+              <div
+                class="legend-item"
+                v-for="(item, index) in legendItemsPopularAirlines"
+                :key="index"
+              >
+                <div class="legend-left">
+                  <span class="color-box" :class="item.airline"></span>
+                  <span class="airline-name">{{ item.name }}</span>
+                </div>
+                <div class="percentage">{{ item.percent }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flights-schedule-container">
+          <div class="flights-schedule-header">
+            <div class="section-header">
+              <h2>Flights Schedule</h2>
+            </div>
+            <div class="section-header-icon">
+              <div class="icon-label">
+                <span class="line-domestic"></span>
+                <p>Domestic</p>
+              </div>
+              <div class="icon-label">
+                <span class="line-international"></span>
+                <p>International</p>
+              </div>
+            </div>
+          </div>
+          <div class="chart-container">
+            <Line
+              class="flights-schedule-analysis"
+              :data="updatedFlightsScheduleAnalysisData"
+              :options="flightsScheduleAnalysisOptions"
+            />
+          </div>
+        </div>
+      </div>
     </div>
-  </div>
-</template>
+  </template>
 
 <style scoped>
+
 .dashboard {
   display: grid;
   grid-template-rows: auto auto auto;
@@ -413,6 +416,7 @@ const updatedFlightsScheduleAnalysisData = {
   padding: 20px;
   color: var(--vt-c-white);
   overflow: visible;
+  background-color: var(--c-navy);
   opacity: 1;
   transition: opacity 0.3s ease-in-out, transform 0.3s ease-out;
 }
