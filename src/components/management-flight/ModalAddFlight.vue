@@ -74,14 +74,14 @@ const formSchema = object({
   departure: object({
     airport: string()
       .nonempty("Airport is required")
-      .max(3, "Airport code must be 3 characters"),
+      .max(100, "Airport code must be less than 100 characters"),
     time: string().nonempty("Time is required"),
     date: string().nonempty("Date is required"),
   }),
   destination: object({
     airport: string()
       .nonempty("Airport is required")
-      .max(3, "Airport code must be 3 characters"),
+      .max(100, "Airport code must be less than 100 characters"),
     time: string().nonempty("Time is required"),
     date: string().nonempty("Date is required"),
   }),
@@ -89,7 +89,7 @@ const formSchema = object({
     time: number().min(1, "Duration time must be greater than 0"), // Use .min() for validation
     stop: number().min(0, "Stop count must be 0 or greater"), // Use .min() for validation
   }),
-  flightStatus: string().nonempty("Flight status is required"),
+  flightPrice: number().min(0, "Duration time must be greater than 0"),
 })
   .refine((data) => data.departure.airport !== data.destination.airport, {
     message: "Departure and destination airports cannot be the same.",
@@ -117,22 +117,12 @@ const form = ref({
   airlineID: null,
   aircraftID: null,
   aircraftName: "",
-  departure: {
-    airport: "",
-    time: "",
-    date: "", 
-  },
-  destination: {
-    airport: "",
-    time: "",
-    date: "",
-  },
-  duration: {
-    time: "",
-    stop: "",
-  },
+  departure: { airport: "", time: "", date: "" },
+  destination: { airport: "", time: "", date: "" },
+  duration: { time: "", stop: "" },
   flightStatus: "",
   stopOvers: [],
+  flightPrice: null,
 });
 
 watch(
@@ -461,19 +451,20 @@ watch(
                 <div
                   class="form-row"
                   style="
-                    grid-template-columns: 2fr 0.5fr 0.5fr;
+                    grid-template-columns: 1fr 0.5fr 0.5fr 0.5fr;
                     gap: 20px;
                     align-items: center;
                   "
                 >
                   <label>Aircraft</label>
+                  <label>Price</label>
                   <label>Stop</label>
                   <label>Duration</label>
                 </div>
                 <div
                   class="form-row inputs"
                   style="
-                    grid-template-columns: 2fr 0.5fr 0.5fr;
+                    grid-template-columns: 1fr 0.5fr 0.5fr 0.5fr;
                     gap: 20px;
                     align-items: center;
                   "
@@ -492,6 +483,12 @@ watch(
                   </option>
                   <option value="add-aircraft">+ Add Aircraft</option>
                 </select>
+                <input
+                    type="number"
+                    placeholder="USD"
+                    min="0"
+                    v-model="form.flightPrice"
+                />
                 <select v-model.number="form.duration.stop"> 
                   <option v-for="stop in [0, 1, 2, 3]" :key="stop" :value="stop">{{ stop }}</option>
                 </select>

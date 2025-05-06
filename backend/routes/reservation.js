@@ -4,25 +4,44 @@ import db from "../db.js";
 const router = express.Router();
 
 // ------------- Reservation -------------
+/*
+If Reservation Status === "Confirmed" when Creating or Updating Reservation:
+    - Create Reservation row with Status = 'Confirmed'
+    - Create Payment row with Status = 'Successful'
+    - Create Passenger row immediately
+    - Seat's availibity is 'No'
 
-// Get all Reservations (with Seat + User + Payment info)
+If Reservation Status === "Pending" when creating Reservation:
+    - Create Reservation row with Status = 'Pending'
+    - Create Payment row with Status = 'Pending'
+    - Don't create Passenger until Payment is Successful
+    - Seat's availibity is 'No'
+
+If Reservation Status === "Pending" when Updating Reservation:
+    - Delete the associated Passenger
+    - Seat's availibity is 'No'
+
+If Reservation Status == "Canceled" && Payment == "Successful"
+    - Delete the associated Passenger (Not Payment due to Refund Case)
+    - Seat's availibity is 'Yes'
+
+If Reservation Status == "Canceled" && Payment != "Successful"
+    - Delete the associated Passenger, and Payment
+    - Seat's availibity is 'Yes'
+*/
+
+// Get all Reservations
 router.get("/", async (req, res) => {
   try {
     const [results] = await db.query(`
       SELECT 
-        r.ReservationID,
-        r.Status,
-        r.BookingDate,
-        u.UserID,
-        u.Username,
-        s.SeatNumber,
-        p.PaymentID,
-        p.Amount
-      FROM Reservation r
-      JOIN User u ON r.UserID = u.UserID
-      JOIN Seat s ON r.SeatID = s.SeatID
-      LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
-    `);
+        r.ReservationID,    // INTEGER: 1234
+        r.UserID,           // INTEGER: 1234
+        r.FlightID,         // INTEGER: 1234
+        r.SeatID,           // INTEGER: 1234
+        r.Status,           // ENUM('Pending', 'Confirmed', 'Canceled')
+        r.BookingDate       // DATETIME: '2025-05-15 08:00'
+      FROM Reservation r`);
     res.json(results);
   } catch (err) {
     console.error(err);
@@ -30,245 +49,162 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get full detail of a Reservation by ID (with User + Seat + Flight + Payment)
-router.get("/:id/full", async (req, res) => {
-  try {
-    const [results] = await db.query(`
-      SELECT 
-        r.ReservationID,
-        r.Status AS ReservationStatus,
-        r.BookingDate,
-        u.UserID,
-        u.Username,
-        u.Email,
-        s.SeatID,
-        s.SeatNumber,
-        s.SeatClass,
-        f.FlightID,
-        f.Departure,
-        f.Destination,
-        f.DepartureTime,
-        p.PaymentID,
-        p.Amount,
-        p.PaymentMethod,
-        p.PaymentDate,
-        p.Status AS PaymentStatus
-      FROM Reservation r
-      JOIN User u ON r.UserID = u.UserID
-      JOIN Seat s ON r.SeatID = s.SeatID
-      JOIN Flight f ON r.FlightID = f.FlightID
-      LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
-      WHERE r.ReservationID = ?
-    `, [req.params.id]);
-
-    if (!userID || !flightID || !seatNumber || !status || !bookingDate) {
-      return res.status(400).send("Missing required reservation fields");
-    }
-    
-    if (results.length === 0) {
-      return res.status(404).send("Reservation not found");
-    }
-
-    const r = results[0];
-
-    res.json({
-      reservationID: r.ReservationID,
-      bookingDate: r.BookingDate,
-      status: r.ReservationStatus,
-      user: {
-        userID: r.UserID,
-        username: r.Username,
-        email: r.Email
-      },
-      flight: {
-        flightID: r.FlightID,
-        departure: r.Departure,
-        destination: r.Destination,
-        time: r.DepartureTime
-      },
-      seat: {
-        seatID: r.SeatID,
-        seatNumber: r.SeatNumber,
-        seatClass: r.SeatClass
-      },
-      payment: r.PaymentID ? {
-        paymentID: r.PaymentID,
-        amount: r.Amount,
-        method: r.PaymentMethod,
-        date: r.PaymentDate,
-        status: r.PaymentStatus
-      } : null
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Database error retrieving full reservation details");
-  }
-});
-
-// Get a Payment Status by ID
-router.get('/:id', async (req, res) => {
-  const reservationID = req.params.id;
-  try {
-    const [rows] = await db.query(`
-      SELECT r.*, p.Status as paymentStatus
-      FROM Reservation r
-      LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
-      WHERE r.ReservationID = ?`, [reservationID]);
-
-    if (rows.length === 0) return res.status(404).json({ error: 'Reservation not found' });
-
-    res.json(rows[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Database error' });
-  }
-});
-
-// GET /api/reservation?paidOnly=true
-router.get('/', async (req, res) => {
-  const { paidOnly, flightID } = req.query;
-  let sql = `
-    SELECT r.*, p.Status AS paymentStatus
-    FROM Reservation r
-    LEFT JOIN Payment p ON r.ReservationID = p.ReservationID
-  `;
-  const params = [];
-
-  if (paidOnly === 'true' && flightID) {
-    sql += ' WHERE p.Status = "Successful" AND r.FlightID = ?';
-    params.push(flightID);
-  } else if (paidOnly === 'true') {
-    sql += ' WHERE p.Status = "Successful"';
-  } else if (flightID) {
-    sql += ' WHERE r.FlightID = ?';
-    params.push(flightID);
-  }
-
-  try {
-    const [rows] = await db.query(sql, params);
-    res.json(rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Create a new Reservation
+// Create a new Reservation and Initial Payment
 router.post("/", async (req, res) => {
   try {
-    const { 
-      userID,        // INTEGER: 1234
-      flightID,      // INTEGER: 1234
-      seatNumber,    // STRING: 'A2'
-      status,        // ENUM('Pending', 'Confirmed', 'Canceled')
-      bookingDate    // DATETIME: '2025-05-15 08:00'
+    const {
+      userID,
+      flightID,
+      seatNumber,
+      status,
+      bookingDate,
+      amount,
+      paymentMethod,
+      paymentDate,
+      passengerInfo
     } = req.body;
 
-    if (!userID || !flightID || !seatNumber || !status || !bookingDate) {
-      return res.status(400).send("Missing required reservation fields");
+    if (!userID || !flightID || !seatNumber || !status || !bookingDate || !amount || !paymentMethod || !paymentDate) {
+      return res.status(400).send("Missing required fields");
     }
 
     // Check user
     const [userResult] = await db.query("SELECT * FROM User WHERE UserID = ?", [userID]);
-    if (userResult.length === 0) {
-      return res.status(404).send("User not found");
-    }
+    if (userResult.length === 0) return res.status(404).send("User not found");
 
     // Get seat ID
     const [seatResult] = await db.query(
       "SELECT SeatID FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Available = 'Yes'",
       [seatNumber, flightID]
     );
-    if (seatResult.length === 0) {
-      return res.status(400).send("Seat not available or not found for this flight");
-    }
+    if (seatResult.length === 0) return res.status(400).send("Seat not available");
 
     const seatID = seatResult[0].SeatID;
 
     // Create reservation
-    const [insertResult] = await db.query(
+    const [resResult] = await db.query(
       "INSERT INTO Reservation (UserID, FlightID, SeatID, Status, BookingDate) VALUES (?, ?, ?, ?, ?)",
       [userID, flightID, seatID, status, bookingDate]
     );
+    const reservationID = resResult.insertId;
 
-    // Update seat Available
-    await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ? AND FlightID = ?", [seatID, flightID]);
+    const paymentStatus = status === 'Confirmed' ? 'Successful' : 'Pending';
+
+    await db.query(
+      "INSERT INTO Payment (ReservationID, UserID, Amount, PaymentMethod, PaymentDate, Status) VALUES (?, ?, ?, ?, ?, ?)",
+      [reservationID, userID, amount, paymentMethod, paymentDate, paymentStatus]
+    );
+
+    // Update Seat Available 
+    await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ?", [seatID]);
+
+    if (status === 'Confirmed') {
+      if (!passengerInfo) return res.status(400).send("Missing passenger info for confirmed reservation");
+
+      const {
+        Firstname,
+        Middlename,
+        Lastname,
+        Nationality,
+        BirthDate,
+        Address,
+        PassportNumber
+      } = passengerInfo;
+
+      if (!Firstname || !Lastname || !Nationality || !BirthDate || !Address || !PassportNumber) {
+        return res.status(400).send("Incomplete passenger info");
+      }
+
+      await db.query(
+        `INSERT INTO Passenger (ReservationID, SeatID, Firstname, Middlename, Lastname, Nationality, BirthDate, Address, PassportNumber)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [reservationID, seatID, Firstname, Middlename || '', Lastname, Nationality, BirthDate, Address, PassportNumber]
+      );
+    }
 
     res.status(201).json({
-      message: "Reservation created successfully",
-      reservationID: insertResult.insertId,
-      seatID,
-      seatNumber
+      message: "Reservation, payment, and optional passenger created.",
+      reservationID,
+      seatID
     });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Database error creating reservation");
+    res.status(500).send("Database error");
   }
 });
 
-// Delete a Reservation
-router.delete("/:id", async (req, res) => {
+// Auto-confirm reservation if payment becomes successful
+router.put("/auto-confirm/:paymentID", async (req, res) => {
   try {
-    const [results] = await db.query("DELETE FROM Reservation WHERE ReservationID = ?", [req.params.id]);
-    if (results.affectedRows === 0) {
-      return res.status(404).send("Reservation not found");
-    }
-    res.json({ message: "Reservation deleted successfully" });
+    const paymentID = req.params.paymentID;
+
+    const [payResult] = await db.query("SELECT * FROM Payment WHERE PaymentID = ?", [paymentID]);
+    if (payResult.length === 0) return res.status(404).send("Payment not found");
+
+    const payment = payResult[0];
+    if (payment.Status !== 'Successful') return res.status(400).send("Payment not successful yet");
+
+    await db.query("UPDATE Reservation SET Status = 'Confirmed' WHERE ReservationID = ?", [payment.ReservationID]);
+
+    res.json({ message: "Reservation confirmed." });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error deleting reservation");
+    res.status(500).send("Error confirming reservation");
   }
 });
 
-// Update a Reservation
-router.put("/:id", async (req, res) => {
+// Cancel Reservation with conditional cleanup
+router.put("/cancel/:id", async (req, res) => {
   try {
     const reservationID = req.params.id;
-    const { userID, flightID, seatNumber, status, bookingDate } = req.body;
 
-    if (!userID || !flightID || !seatNumber || !status || !bookingDate) {
-      return res.status(400).send("Missing required reservation fields");
+    const [resResult] = await db.query("SELECT * FROM Reservation WHERE ReservationID = ?", [reservationID]);
+    if (resResult.length === 0) return res.status(404).send("Reservation not found");
+
+    const [paymentResult] = await db.query("SELECT * FROM Payment WHERE ReservationID = ?", [reservationID]);
+    const payment = paymentResult[0];
+
+    await db.query("UPDATE Reservation SET Status = 'Canceled' WHERE ReservationID = ?", [reservationID]);
+
+    await db.query("DELETE FROM Passenger WHERE ReservationID = ?", [reservationID]);
+
+    if (!payment || payment.Status !== 'Successful') {
+      await db.query("DELETE FROM Payment WHERE ReservationID = ?", [reservationID]);
     }
 
-    // Check user
-    const [userResult] = await db.query("SELECT * FROM User WHERE UserID = ?", [userID]);
-    if (userResult.length === 0) {
-      return res.status(404).send("User not found");
-    }
+    await db.query("UPDATE Seat SET Available = 'Yes' WHERE SeatID = ?", [resResult[0].SeatID]);
 
-    // Find new Seat
-    const [seatResult] = await db.query(
-      "SELECT SeatID FROM Seat WHERE SeatNumber = ? AND FlightID = ? AND Available = 'Yes'",
-      [seatNumber, flightID]
-    );
-    if (seatResult.length === 0) {
-      return res.status(400).send("Seat not available or doesn't exist");
-    }
-
-    const newSeatID = seatResult[0].SeatID;
-
-    // Get old SeatID
-    const [oldResult] = await db.query("SELECT SeatID FROM Reservation WHERE ReservationID = ?", [reservationID]);
-    if (oldResult.length === 0) {
-      return res.status(404).send("Reservation not found");
-    }
-    const oldSeatID = oldResult[0].SeatID;
-
-    // Update Reservation
-    await db.query(
-      "UPDATE Reservation SET UserID = ?, FlightID = ?, SeatID = ?, Status = ?, BookingDate = ? WHERE ReservationID = ?",
-      [userID, flightID, newSeatID, status, bookingDate, reservationID]
-    );
-
-    // Update seat Available
-    await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ?", [newSeatID]);
-    await db.query("UPDATE Seat SET Available = 'Yes' WHERE SeatID = ?", [oldSeatID]);
-
-    res.json({ message: "Reservation updated successfully" });
+    res.json({ message: "Reservation canceled and related records handled." });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Error updating reservation");
+    res.status(500).send("Error canceling reservation");
   }
 });
-  
+
+// Delete Reservation (Only allowed if Payment != Successful || Status != Confirmed)
+router.delete("/:id", async (req, res) => {
+  try {
+    const reservationID = req.params.id;
+
+    const [resResult] = await db.query("SELECT * FROM Reservation WHERE ReservationID = ?", [reservationID]);
+    if (resResult.length === 0) return res.status(404).send("Reservation not found");
+
+    const [paymentResult] = await db.query("SELECT * FROM Payment WHERE ReservationID = ?", [reservationID]);
+    const payment = paymentResult[0];
+
+    if ((payment && payment.Status === 'Successful') || resResult[0].Status === 'Confirmed') {
+      return res.status(400).send("Cannot delete reservation with successful payment or confirmed status. Please cancel instead.");
+    }
+
+    await db.query("DELETE FROM Passenger WHERE ReservationID = ?", [reservationID]);
+    await db.query("DELETE FROM Payment WHERE ReservationID = ?", [reservationID]);
+    await db.query("DELETE FROM Reservation WHERE ReservationID = ?", [reservationID]);
+
+    res.json({ message: "Reservation and related data deleted." });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Delete failed");
+  }
+});
+
 export default router;

@@ -64,6 +64,7 @@ export const useFlightStore = defineStore("flight", {
           duration: Number(flightData.duration.time),
           aircraftID: flightData.aircraftID,
           status: capitalize(flightData.flightStatus),
+          price: Number(flightData.flightPrice),
         });
 
         const newFlight = {
@@ -90,6 +91,7 @@ export const useFlightStore = defineStore("flight", {
           duration: Number(updatedFlight.duration.time),
           aircraftID: updatedFlight.aircraftID,
           status: capitalize(updatedFlight.flightStatus),
+          price: Number(updatedFlight.flightPrice),
         });
 
         const index = this.flights.findIndex(f => f.flightID === flightID);

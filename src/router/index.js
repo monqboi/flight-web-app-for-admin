@@ -8,7 +8,7 @@ import ManagementMenu from "@/views/management/ManagementMenu.vue";
 import FinanceManagement from '@/views/management/FinanceManagement.vue';
 import UserManagement from '@/views/management/UserManagement.vue';
 import PassengerManagement from "@/views/management/PassengerManagement.vue"
-import FlightReservation from "@/views/management/FlightReservation.vue"
+import FlightReservation from "@/views/management/ReservationManagement.vue"
 import AdminManagement from '@/views/AdminManagement.vue'
 import ReportPage from '@/views/ReportPage.vue'
 import ModifyUser from '@/views/ModifyUser.vue'

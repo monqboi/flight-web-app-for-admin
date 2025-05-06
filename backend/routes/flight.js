@@ -41,6 +41,7 @@ router.get("/", async (req, res) => {
         },
         aircraftID: flight.AircraftID,
         flightStatus: flight.Status,
+        flightPrice: flight.Price,
         isSeatAvailable: true,
       };
     });
@@ -85,6 +86,7 @@ router.get("/:id", async (req, res) => {
       },
       aircraftID: flight.AircraftID,
       flightStatus: flight.Status,
+      flightPrice: flight.Price,
       isSeatAvailable: true,
     });
   } catch (err) {
@@ -108,6 +110,7 @@ router.post("/", async (req, res) => {
       duration,
       aircraftID,
       status,
+      price
     } = req.body;
 
     const departureDateTime = combineDateTime(departureDate, departureTime);
@@ -119,8 +122,8 @@ router.post("/", async (req, res) => {
 
     const query = `
       INSERT INTO Flight 
-      (AirlineID, Departure, Destination, DepartureDateTime, ArrivalDateTime, StopOver, Duration, AircraftID, Status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (AirlineID, Departure, Destination, DepartureDateTime, ArrivalDateTime, StopOver, Duration, AircraftID, Status, Price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
@@ -133,6 +136,7 @@ router.post("/", async (req, res) => {
       duration,
       aircraftID,
       capitalize(status),
+      price
     ];
 
     const [result] = await db.query(query, values);
@@ -158,6 +162,7 @@ router.put("/:id", async (req, res) => {
       duration,
       aircraftID,
       status,
+      price
     } = req.body;
 
     const departureDateTime = combineDateTime(departureDate, departureTime);
@@ -177,6 +182,7 @@ router.put("/:id", async (req, res) => {
         Duration = ?, 
         AircraftID = ?, 
         Status = ?
+        Price = ?
       WHERE FlightID = ?
     `;
 
@@ -189,6 +195,7 @@ router.put("/:id", async (req, res) => {
       duration,
       aircraftID,
       capitalize(status),
+      price,
       req.params.id,
     ];
 
@@ -205,11 +212,25 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-
 // Delete a Flight
 router.delete("/:id", async (req, res) => {
+  const flightID = req.params.id;
+
   try {
-    const [result] = await db.query("DELETE FROM Flight WHERE FlightID = ?", [req.params.id]);
+    // Check if there is a Reservation associated with this Flight (ignore the status)
+    const [reservationCheck] = await db.query(
+      "SELECT COUNT(*) AS count FROM Reservation WHERE FlightID = ?",
+      [flightID]
+    );
+
+    if (reservationCheck[0].count > 0) {
+      return res
+        .status(400)
+        .json({ error: "Cannot delete flight with any existing reservations." });
+    }
+
+    // If there is no reservation, you can delete it.
+    const [result] = await db.query("DELETE FROM Flight WHERE FlightID = ?", [flightID]);
 
     if (result.affectedRows === 0) {
       return res.status(404).send("Flight not found");

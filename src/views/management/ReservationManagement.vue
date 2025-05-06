@@ -1,69 +1,87 @@
 <script setup>
-import { useReservationStore } from '@/stores/reservationStore'
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useReservationStore } from '@/stores/reservationStore';
+import { useFlightStore } from '@/stores/flightStore';
+import { formatDate } from '@/utils/flightUtils';
 
-const router = useRouter()
-const route = useRoute()
-const toggleView = ref(true)
-const searchQuery = ref('')
-const showModal = ref(false)
-const editIndex = ref(null)
+const router = useRouter();
+const route = useRoute();
+const toggleView = ref(true);
+const searchQuery = ref('');
+const showModal = ref(false);
+const editIndex = ref(null);
 
-const reservationStore = useReservationStore()
+const reservationStore = useReservationStore();
+const flightStore = useFlightStore();
 
 const form = ref({
   userId: '',
   flightId: '',
-  seat: '',
+  seatNumber: '',
   status: '',
   bookingDate: ''
-})
+});
 
 onMounted(async () => {
-  await reservationStore.loadReservations()
-})
+  await flightStore.loadFlights();
+  await reservationStore.loadReservations(route.params.flightId);
+});
+
+const flight = computed(() => flightStore.getFlightByID(route.params.flightId));
 
 const reservations = computed(() =>
   reservationStore.reservations.map(r => ({
     id: r.ReservationID,
     userId: r.UserID,
     username: r.Username,
-    seat: r.SeatNumber,
+    seatNumber: r.SeatNumber,
     amount: r.Amount || '-',
     paymentId: r.PaymentID || '-',
     bookingDate: new Date(r.BookingDate).toLocaleString(),
     status: r.Status
   }))
-)
+);
 
 const filteredReservations = computed(() => {
-  const q = searchQuery.value.toLowerCase()
+  const q = searchQuery.value.toLowerCase();
   return reservations.value.filter(r =>
     r.userId.toString().includes(q) ||
     r.status.toLowerCase().includes(q)
-  )
-})
+  );
+});
 
 function openModal(res = null, index = null) {
   if (res) {
-    form.value = { ...res }
-    editIndex.value = index
+    form.value = {
+      id: res.id,
+      userId: res.userId,
+      flightId: route.params.flightId,
+      seatNumber: res.seatNumber,
+      status: res.status,
+      bookingDate: res.bookingDate.split('T')[0] + 'T' + res.bookingDate.split('T')[1].slice(0, 5)
+    };
+    editIndex.value = index;
   } else {
     form.value = {
-      id: null, reservationId: '', userId: '', seat: '', name: '', paymentId: '', bookingDate: '', status: 'Pending'
-    }
-    editIndex.value = null
+      id: null,
+      userId: '',
+      seatNumber: '',
+      status: 'Pending',
+      bookingDate: '',
+      flightId: route.params.flightId
+    };
+    editIndex.value = null;
   }
-  showModal.value = true
+  showModal.value = true;
 }
 
 function closeModal() {
-  showModal.value = false
+  showModal.value = false;
 }
 
 async function saveReservation() {
-  if (!form.value.userId || !form.value.flightId || !form.value.status || !form.value.bookingDate) {
+  if (!form.value.userId || !form.value.flightId || !form.value.seatNumber || !form.value.status || !form.value.bookingDate) {
     alert("Please fill in all fields.");
     return;
   }
@@ -71,9 +89,9 @@ async function saveReservation() {
   const payload = {
     userID: form.value.userId,
     flightID: form.value.flightId,
+    seatNumber: form.value.seatNumber,
     status: form.value.status,
-    bookingDate: form.value.bookingDate,
-    seatNumber: form.value.seat
+    bookingDate: form.value.bookingDate
   };
 
   try {
@@ -102,31 +120,30 @@ async function deleteReservation(id) {
 
 function switchView() {
   if (!toggleView.value) {
-    router.push({ name: 'PassengerManagement', params: { flightId: route.params.flightId, airlineID: route.params.airlineID } })
+    router.push({ name: 'PassengerManagement', params: { flightId: route.params.flightId, airlineID: route.params.airlineID } });
   }
 }
 
 function goBack() {
-  router.back()
+  router.back();
 }
 </script>
 
 <template>
   <div class="layout">
     <main class="main-content">
-      <!-- HEADER -->
       <div class="flight-header">
         <button class="back-button" @click="goBack">←</button>
         <div class="flight-date-info">
-          <span class="date">Mar 09, 2025</span>
+          <span class="date">{{ formatDate(flight.departure.date) }}</span>
           <div class="flight-route">
             <img src="/src/assets/plane-fly.png" />
-            <span class="airport">BKK</span>
-            <span class="time">18:00</span>
+            <span class="airport">{{ flight.departure.airport }}</span>
+            <span class="time">{{ flight.departure.time }}</span>
             <img src="/src/assets/fly-duration.png" class="flight-arrow" />
             <img src="/src/assets/plane-land.png" />
-            <span class="airport">CNX</span>
-            <span class="time">18:00</span>
+            <span class="airport">{{ flight.destination.airport }}</span>
+            <span class="time">{{ flight.destination.time }}</span>
           </div>
         </div>
         <div class="flight-mode-toggle">
@@ -134,7 +151,7 @@ function goBack() {
           <div class="view-switch">
             <span :class="{ active: !toggleView }">Passenger</span>
             <label class="switch">
-              <input type="checkbox" v-model="toggleView" @change="switchView">
+              <input type="checkbox" v-model="toggleView" @change="switchView" />
               <span class="slider round"></span>
             </label>
             <span :class="{ active: toggleView }">Reservation</span>
@@ -146,7 +163,6 @@ function goBack() {
         </div>
       </div>
 
-      <!-- TABLE -->
       <div class="payment-table">
         <table class="passenger-table">
           <thead>
@@ -164,28 +180,24 @@ function goBack() {
           </thead>
           <tbody>
             <tr class="ticket-row" v-for="(res, index) in filteredReservations" :key="res.id">
-              <td>{{ res.username }}<br><span class="small-id">#{{ res.userId }}</span></td>
-              <td>{{ res.seat }}</td>
+              <td>{{ res.username }}<br /><span class="small-id">#{{ res.userId }}</span></td>
+              <td>{{ res.seatNumber }}</td>
               <td>{{ res.amount }}</td>
               <td>{{ res.paymentId }}</td>
               <td>{{ res.bookingDate }}</td>
               <td>
-                <span
-                  class="status"
-                  :class="{
-                    success: res.status === 'Confirmed',
-                    failed: res.status === 'Cancelled',
-                    pending: res.status === 'Pending'
-                  }"
-                >
+                <span class="status" :class="{
+                  success: res.status === 'Confirmed',
+                  failed: res.status === 'Canceled',
+                  pending: res.status === 'Pending'
+                }">
                   {{ res.status }}
                 </span>
               </td>
               <td>
                 <div class="action-buttons">
                   <i class="fa fa-edit" @click="openModal(res, index)"></i>
-                  <font-awesome-icon icon="trash"  @click="deleteReservation(res.id)"title="Delete"
-                  class="action-icon" />
+                  <font-awesome-icon icon="trash" @click="deleteReservation(res.id)" title="Delete" class="action-icon" />
                 </div>
               </td>
             </tr>
@@ -193,13 +205,12 @@ function goBack() {
         </table>
       </div>
 
-      <!-- MODAL -->
       <div v-if="showModal" class="modal">
         <div class="modal-content user-form">
           <h3>{{ editIndex !== null ? 'Edit Reservation' : 'Add Reservation' }}</h3>
           <div class="form-row">
             <input type="number" v-model="form.userId" placeholder="User ID" />
-            <input type="text" v-model="form.seat" placeholder="Seat Number" />
+            <input type="text" v-model="form.seatNumber" placeholder="Seat Number" />
             <input type="number" v-model="form.flightId" placeholder="Flight ID" />
           </div>
 

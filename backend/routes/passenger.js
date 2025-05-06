@@ -19,7 +19,7 @@ router.get('/', async (req, res) => {
         pa.Middlename,
         pa.Lastname,
         pa.Nationality,
-        pa.Birth,
+        pa.BirthDate,
         pa.PassportNumber,
         pa.Address,
         u.UserID,
@@ -49,16 +49,16 @@ router.get('/', async (req, res) => {
 // Add new passenger
 router.post("/", async (req, res) => {
   const {
-    reservationId, seatID, firstName, middleName, lastName,
+    reservationId, seatID, firstName, middleName, lastName, birth,
     nationality, passport, address
   } = req.body;
 
   try {
     const [result] = await db.query(`
       INSERT INTO Passenger 
-      (ReservationID, SeatID, Firstname, Middlename, Lastname, Nationality, PassportNumber, Address)
+      (ReservationID, SeatID, Firstname, Middlename, Lastname, BirthDate, Nationality, PassportNumber, Address)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [reservationId, seatID, firstName, middleName, lastName, nationality, passport, address]);
+    `, [reservationId, seatID, firstName, middleName, lastName, birth, nationality, passport, address]);
 
     res.status(201).json({ message: "Passenger added", id: result.insertId });
   } catch (err) {
@@ -71,17 +71,17 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   const passengerID = req.params.id;
   const {
-    reservationId, seatID, firstName, middleName, lastName,
+    reservationId, seatID, firstName, middleName, lastName, birth,
     nationality, passport, address
   } = req.body;
 
   try {
     await db.query(`
       UPDATE Passenger SET
-        ReservationID = ?, SeatID = ?, Firstname = ?, Middlename = ?, Lastname = ?, 
+        ReservationID = ?, SeatID = ?, Firstname = ?, Middlename = ?, Lastname = ?, BirthDate = ?,
         Nationality = ?, PassportNumber = ?, Address = ?
       WHERE PassengerID = ?
-    `, [reservationId, seatID, firstName, middleName, lastName, nationality, passport, address, passengerID]);
+    `, [reservationId, seatID, firstName, middleName, lastName, birth, nationality, passport, address, passengerID]);
 
     res.json({ message: "Passenger updated" });
   } catch (err) {

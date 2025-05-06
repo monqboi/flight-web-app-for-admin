@@ -141,12 +141,12 @@ function goBack() {
           <thead>
             <tr>
               <th class="spacer-col"></th>
-              <th>UserID</th>
+              <th>User</th>
               <th>Seat Number</th>
               <th>Full Name</th>
               <th>Passport No.</th>
               <th>Nationality</th>
-              <th>Birth</th>
+              <th>Birthdate</th>
               <th>Address</th>
               <th>Action</th>
               <th class="spacer-col"></th>
@@ -159,7 +159,7 @@ function goBack() {
               <td>{{ p.Firstname }} {{ p.Middlename }} {{ p.Lastname }}</td>
               <td>{{ p.PassportNumber }}</td>
               <td>{{ p.Nationality }}</td>
-              <td>{{ formatDate(flight.departure.date) }}</td><!--<td>{{ p.Birth }}</td>-->
+              <td>{{ formatDate(p.BirthDate) }}</td>
               <td>{{ p.Address }}</td>
               <td>
                 <div class="action-buttons">

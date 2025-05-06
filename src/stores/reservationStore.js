@@ -7,8 +7,12 @@ export const useReservationStore = defineStore('reservation', {
     current: null
   }),
   actions: {
-    async loadReservations() {
-      const res = await axios.get('/api/reservation')
+    async loadReservations(flightID = null) {
+      let url = '/api/reservation'
+      if (flightID) {
+        url += `?flightID=${flightID}`
+      }
+      const res = await axios.get(url)
       this.reservations = res.data
     },
     async getReservationByID(id) {
