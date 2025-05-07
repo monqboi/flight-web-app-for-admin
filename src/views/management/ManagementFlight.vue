@@ -62,10 +62,14 @@
   const selectedAircraftID = ref("");
   const selectedFlightID = ref(0);
 
+  const sortOrder = ref("desc");
   const filteredFlights = computed(() => {
-    return flightStore.getFlightsByAirlineId(airlineID).slice().sort((a, b) => b.flightID - a.flightID);
+    const flights = flightStore.getFlightsByAirlineId(airlineID).slice();
+    return sortOrder.value === "desc"
+      ? flights.sort((a, b) => b.flightID - a.flightID)
+      : flights.sort((a, b) => a.flightID - b.flightID);
   });
-  
+
   onMounted(async () => {
     console.log("onMounted ManagementFlight.vue");
     await flightStore.loadFlights();
@@ -170,6 +174,10 @@
               @input="handleSearch"
             />
           </div>
+          <button class="sort-button" @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'">
+            <span v-if="sortOrder === 'desc'"> ↓</span>
+            <span v-else> ↑</span>
+          </button>
           <Dropdown v-model="status" :statusOptions="statusOptions">
             <template #trigger="{ selected }">
               <span
@@ -464,6 +472,26 @@
   gap: 15px;
   align-items: center;
 }
+
+/* Sort Button by FlightID */
+.sort-button {
+  padding: 10px 25px;
+  border: 1px solid var(--c-navy-light);
+  border-radius: 10px;
+  background: white;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--c-navy-light);
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.sort-button:hover {
+  background-color: var(--c-navy-light);
+  color: white;
+} 
 
 /* Search Input Styling */
 .search-container {

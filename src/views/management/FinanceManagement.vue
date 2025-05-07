@@ -38,18 +38,23 @@ onMounted(async () => {
   await paymentStore.loadPayments();
 });
 
+const sortOrder = ref('desc');
+
 const filteredPayments = computed(() => {
-  return paymentStore.payments.filter(p => {
-    const query = searchQuery.value.toLowerCase();
+  const query = searchQuery.value.toLowerCase();
+
+  const filtered = paymentStore.payments.filter(p => {
     const matchUser = p.username?.toLowerCase().includes(query);
     const matchUserID = p.userId?.toString().includes(query);
     const matchReservation = p.reservationId?.toString().includes(query);
-
     const matchSearch = !query || matchUser || matchUserID || matchReservation;
     const matchStatus = !statusFilter.value || p.status.toLowerCase() === statusFilter.value.toLowerCase();
-
     return matchSearch && matchStatus;
   });
+
+  return filtered.sort((a, b) =>
+    sortOrder.value === 'asc' ? a.id - b.id : b.id - a.id
+  );
 });
 
 const paginatedPayments = computed(() => {
@@ -173,6 +178,10 @@ function discardPayment() {
             v-model="searchQuery"
           />
         </div>
+        <button class="sort-button" @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'">
+            <span v-if="sortOrder === 'desc'"> ↓</span>
+            <span v-else> ↑</span>
+          </button>
         <select class="status-filter" v-model="statusFilter">
           <option value="">All Status</option>
           <option>Pending</option>
@@ -350,13 +359,43 @@ function discardPayment() {
   transition: all 0.3s ease;
 }
 
+/* Sort Button by PaymentID */
+.sort-button {
+  padding: 10px 25px;
+  border: 1px solid var(--c-navy-light);
+  border-radius: 10px;
+  background: white;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--c-navy-light);
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.sort-button:hover {
+  background-color: var(--c-navy-light);
+  color: white;
+} 
+
+/* Status Filter Button */
 .status-filter {
-  padding: 10px 12px;
-  border-radius: 24px;
-  border: 1px solid #ccc;
-  background-color: #fff;
-  font-size: 0.95rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 10px 25px;
+  border: 1px solid var(--c-navy-light);
+  border-radius: 10px;
+  background: white;
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--c-navy-light);
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+.status-button:hover {
+  background-color: var(--c-navy-light);
+  color: white;
 }
 
 .add-btn {

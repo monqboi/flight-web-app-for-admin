@@ -39,14 +39,27 @@ onMounted(async () => {
   await passengerStore.loadPassengers(flightID)
 })
 
+const sortOrder = ref("desc");
 const filtered = computed(() => {
-  const q = searchQuery.value.toLowerCase()
-  return passengerStore.passengers.filter(p =>
+  const q = searchQuery.value.toLowerCase();
+
+  const filteredList = passengerStore.passengers.filter(p =>
     (p.Username || '').toLowerCase().includes(q) ||
     (`${p.Firstname} ${p.Lastname}` || '').toLowerCase().includes(q) ||
     (p.SeatNumber || '').toString().includes(q)
-  )
-})
+  );
+
+  return filteredList.sort((a, b) => {
+    const seatA = a.SeatNumber || '';
+    const seatB = b.SeatNumber || '';
+
+    if (sortOrder.value === 'asc') {
+      return seatA.localeCompare(seatB, undefined, { numeric: true });
+    } else {
+      return seatB.localeCompare(seatA, undefined, { numeric: true });
+    }
+  });
+});
 
 function switchView() {
   if (toggleView.value) {
@@ -143,6 +156,10 @@ function goBack() {
         <div class="search-actions">
           <input class="search-box" v-model="searchQuery" placeholder="🔍 Search Passenger" />
           <!--<button class="add-btn" @click="openModal()">+ Add</button>-->
+          <button class="sort-button" @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'">
+            <span v-if="sortOrder === 'desc'"> ↓</span>
+            <span v-else> ↑</span>
+          </button>
         </div>
       </div>
 
@@ -404,15 +421,26 @@ input:checked + .slider:before {
     cursor: pointer;
   }
   
-  .discard-btn {
-    background-color: #1d3a4c;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-  }
+.discard-btn {
+  background-color: #1d3a4c;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
   
+/* Sort Button by PassengerID */
+.sort-button {
+  background-color: var(--c-navy-light); color: white; border: none;
+  padding: 10px 18px; border-radius: 10px; font-weight: bold; cursor: pointer;
+}
 
-  </style>
+.sort-button:hover {
+  background-color: white;
+  color: var(--c-navy-light);
+  border: 1px solid #ccc;
+} 
+
+</style>
   

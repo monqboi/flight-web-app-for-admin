@@ -44,12 +44,17 @@ const reservations = computed(() =>
   }))
 );
 
+const sortOrder = ref("desc");
 const filteredReservations = computed(() => {
   const q = searchQuery.value.toLowerCase();
-  return reservations.value.filter(r =>
+  const filtered = reservations.value.filter(r =>
     r.userId.toString().includes(q) ||
     r.status.toLowerCase().includes(q)
   );
+
+  return filtered.sort((a, b) => {
+    return sortOrder.value === "asc" ? a.id - b.id : b.id - a.id;
+  });
 });
 
 function openModal(res = null, index = null) {
@@ -160,6 +165,10 @@ function goBack() {
         </div>
         <div class="search-actions">
           <input class="search-box" v-model="searchQuery" placeholder="🔍 Search User" />
+          <button class="sort-button" @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'">
+            <span v-if="sortOrder === 'desc'"> ↓</span>
+            <span v-else> ↑</span>
+          </button>
           <button class="add-btn" @click="openModal()">+ Add</button>
         </div>
       </div>
@@ -475,4 +484,17 @@ function goBack() {
     background-color: #e74c3c;
     color: white;
 }
-  </style>
+
+/* Sort Button by ReservationID */
+.sort-button {
+  background-color: var(--c-navy-light); color: white; border: none;
+  padding: 10px 18px; border-radius: 10px; font-weight: bold; cursor: pointer;
+}
+
+.sort-button:hover {
+  background-color: white;
+  color: var(--c-navy-light);
+  border: 1px solid #ccc;
+} 
+
+</style>
