@@ -63,9 +63,9 @@
   const selectedFlightID = ref(0);
 
   const filteredFlights = computed(() => {
-    return flightStore.getFlightsByAirlineId(airlineID);
+    return flightStore.getFlightsByAirlineId(airlineID).slice().sort((a, b) => b.flightID - a.flightID);
   });
-
+  
   onMounted(async () => {
     console.log("onMounted ManagementFlight.vue");
     await flightStore.loadFlights();
@@ -111,8 +111,16 @@
   };
 
   const handleSearch = (event) => {
-    flightStore.setSearchQuery(event.target.value);
-  };
+  const keyword = event.target.value.toLowerCase();
+  paginatedFlights.value = filteredFlights.value.filter((flight) => {
+    return (
+      flight.departure.airport.toLowerCase().includes(keyword) ||
+      flight.destination.airport.toLowerCase().includes(keyword) ||
+      flight.departure.date.toLowerCase().includes(keyword) ||
+      flight.destination.date?.toLowerCase().includes(keyword)
+    );
+  });
+};
 
   const showEditFlightModal = (flightID) => {
     selectedFlightID.value = flightID;

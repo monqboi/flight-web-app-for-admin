@@ -158,9 +158,9 @@ watch(
             time: flight.duration?.time ?? flight.duration ?? 0,
             stop: stopOverArray.length,
           },
-          flightStatus: flight.status || "",
+          flightStatus: flight.flightStatus ?? flight.status ?? "pending",
           stopOvers: stopOverArray,
-          flightPrice: flight.flightPrice ?? 0,
+          flightPrice: flight.flightPrice ?? flight.price ?? 0,
         };
       }
     }
@@ -308,14 +308,15 @@ const handleAircraftAdded = async (newAircraft) => {
 
 watch(
   () => form.value.duration.stop,
-  (newStopCount) => {
+  (newStopCount, oldStopCount) => {
     const stopCount = parseInt(newStopCount, 10);
     if (!isNaN(stopCount)) {
-      form.value.stopOvers = Array.from({ length: stopCount }, () => "");
+      const oldStops = form.value.stopOvers || [];
+      const newStops = Array.from({ length: stopCount }, (_, i) => oldStops[i] || "");
+      form.value.stopOvers = newStops;
     }
   }
 );
-
 </script>
 
 <template>

@@ -48,7 +48,8 @@ router.get('/bookings', async (req, res) => {
       FROM Reservation r
       JOIN Flight f ON r.FlightID = f.FlightID
       JOIN Airline a ON f.AirlineID = a.AirlineID
-      ORDER BY r.BookingDate DESC
+      GROUP BY r.FlightID
+      ORDER BY MAX(r.BookingDate) DESC
       LIMIT 2
     `);
 

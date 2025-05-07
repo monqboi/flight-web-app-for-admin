@@ -31,16 +31,70 @@ ChartJS.register(
   LineElement
 );
 
-// ใช้งาน store
 const dashboardStore = useDashboardStore();
 
 onMounted(async () => {
   await dashboardStore.loadDashboard();
 });
 
-// ดึงข้อมูลจาก store
 const stats = computed(() => dashboardStore.stats);
 const bookings = computed(() => dashboardStore.bookings);
+
+// Chart Options
+const chartOptions = {
+  responsive: true,
+  plugins: {
+    legend: { display: false },
+  },
+};
+
+const pieChartOptions = {
+  responsive: true,
+  cutout: "70%",
+  plugins: {
+    legend: {
+      display: false,
+    },
+    tooltip: {
+      callbacks: {
+        label: (tooltipItem) => {
+          const label = tooltipItem.label || "";
+          const value = tooltipItem.raw || 0;
+          return `${label}: ${value}%`;
+        },
+      },
+    },
+  },
+};
+
+const flightsScheduleAnalysisOptions = {
+  responsive: true,
+  maintainAspectRatio: false,
+  interaction: {
+    intersect: false,
+    mode: "index",
+  },
+  scales: {
+    x: {
+      grid: { display: false },
+      ticks: { color: "#94a3b8" },
+    },
+    y: {
+      beginAtZero: true,
+      suggestedMax: 10,
+      ticks: {
+        stepSize: 1,
+        color: "#94a3b8",
+      },
+      grid: {
+        color: "#e2e8f0",
+      },
+    },
+  },
+  plugins: {
+    legend: { display: false },
+  },
+};
 
 // Chart: Reservation Summary
 const chartData = computed(() => dashboardStore.reservationChart || { labels: [], datasets: [] });
@@ -101,6 +155,7 @@ function createGradient(baseColor) {
 
 // Chart: Flight Schedule
 const flightsScheduleData = computed(() => dashboardStore.flightScheduleChart || { labels: [], datasets: [] });
+
 const updatedFlightsScheduleAnalysisData = computed(() => {
   const ds = flightsScheduleData.value.datasets || [];
   const labels = flightsScheduleData.value.labels.map(d =>
@@ -129,13 +184,33 @@ const totalTickets = computed(() => {
   return chartData.value.datasets?.[0]?.data?.reduce((sum, val) => sum + val, 0) || 0;
 });
 
-// Chart Options (optional - still use original config)
+const legendItemsPopularAirlines = computed(() => {
+  const chart = updatedPieChartData.value;
+  if (!chart || !chart.labels || !chart.datasets?.[0]?.data) return [];
+
+  return chart.labels.map((label, index) => {
+    return {
+      name: label,
+      percent: chart.datasets[0].data[index] + "%",
+      airline: index === 0 ? "orange" : index === 1 ? "navy" : "blue",
+    };
+  });
+});
+
+/* Chart Options (optional - still use original config)
 import {
   chartOptions,
   pieChartOptions,
-  legendItemsPopularAirlines,
   flightsScheduleAnalysisOptions,
-} from "@/data/dashboard";
+} from "@/data/dashboard";*/
+
+import { useRouter } from 'vue-router';
+const router = useRouter();
+
+const goToAirlineManagement = () => {
+  router.push('/management/airline')
+};
+
 </script>
 
   <template>
@@ -246,13 +321,13 @@ import {
         <div class="bookings-section">
           <div class="section-header">
             <h2>All Bookings</h2>
-            <p>Overview of Recent Reservation</p>
-            <button class="more-btn">MORE</button>
+            <p>Overview of Recent Reservations</p>
+            <button class="more-btn" @click="goToAirlineManagement">MORE</button>
           </div>
 
           <div class="bookings-list">
             <div class="bookings-header">
-              <div class="header-left">Desination</div>
+              <div class="header-left">Flight</div>
               <div class="header-right">Detail</div>
             </div>
             <div
@@ -941,9 +1016,9 @@ import {
 
 .flights-schedule-analysis {
   position: relative;
-  height: 350px;
+  height: 500px;
   width: 100%;
-  max-width: 800px;
+  max-width:1000px;
   margin: 0 auto;
   padding: 20px;
   border-radius: 8px;
