@@ -8,6 +8,7 @@ import aircraftRouter from "./routes/aircraft.js";
 import paymentRouter from "./routes/payment.js";
 import passengerRoutes from "./routes/passenger.js";
 import dashboardRouter from './routes/dashboard.js';
+import reportRouter from './routes/report.js';
 
 const app = express();
 const port = 3000;
@@ -29,6 +30,7 @@ app.use("/api/reservation", reservationRouter);
 app.use("/api/payment", paymentRouter);
 app.use("/api/passenger", passengerRoutes);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/report', reportRouter);
 
 // Start server
 app.listen(port, () => {
