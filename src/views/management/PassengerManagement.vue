@@ -84,22 +84,24 @@ async function openModal(p = null, idx = null) {
       nationality: p.Nationality || '',
       birth: p.BirthDate ? p.BirthDate.split('T')[0] : '', 
       passport: p.PassportNumber || '',
-      address: p.Address || ''
+      address: p.Address || '',
+      flightID: flightID
     }
   } else {
     isEditing.value = false
     editingIndex.value = null
     form.value = {
-      id: p.PassengerID,
-      reservationId: p.ReservationID,
-      seat: p.SeatID,
-      firstName: p.Firstname || '',
-      middleName: p.Middlename || '',
-      lastName: p.Lastname || '',
-      nationality: p.Nationality || '',
-      birth: p.BirthDate ? p.BirthDate.split('T')[0] : '', 
-      passport: p.PassportNumber || '',
-      address: p.Address || ''
+      id: p?.PassengerID ?? null,
+      reservationId: p?.ReservationID ?? '',
+      seat: p?.SeatID ?? '',
+      firstName: p?.Firstname || '',
+      middleName: p?.Middlename || '',
+      lastName: p?.Lastname || '',
+      nationality: p?.Nationality || '',
+      birth: p?.BirthDate ? p.BirthDate.split('T')[0] : '',
+      passport: p?.PassportNumber || '',
+      address: p?.Address || '',
+      flightID: flightID 
     }
   }
   showModal.value = true
@@ -191,7 +193,7 @@ function goBack() {
               <td>
                 <div class="action-buttons">
                   <i class="fa fa-edit" @click="openModal(p, index)"></i>
-                  <font-awesome-icon icon="trash" @click="deletePassenger(p.PassengerID)" />
+                  <!--<font-awesome-icon icon="trash" @click="deletePassenger(p.PassengerID)" />-->
                 </div>
               </td>
             </tr>
@@ -204,7 +206,7 @@ function goBack() {
           <h3>{{ isEditing ? 'Modify Passenger' : 'Add Passenger' }}</h3>
           <div class="form-row">
             <input v-model="form.reservationId" placeholder="Reservation ID" disabled />
-            <input v-model="form.seat" placeholder="Seat Number" disabled />
+            <input v-model="form.seat" placeholder="Seat ID" disabled />
           </div>
           <div class="form-row">
             <input v-model="form.firstName" placeholder="First Name" />
@@ -442,5 +444,5 @@ input:checked + .slider:before {
   border: 1px solid #ccc;
 } 
 
-</style>
+</style>  
   

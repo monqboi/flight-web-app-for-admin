@@ -12,15 +12,16 @@ const searchQuery = ref('');
 const showModal = ref(false);
 const editIndex = ref(null);
 
-const flightID = route.params.flightID
-const airlineID = route.params.airlineID
+const flightID = route.params.flightID;
+const airlineID = route.params.airlineID;
 const reservationStore = useReservationStore();
 const flightStore = useFlightStore();
 const flight = computed(() => flightStore.getFlightByID(flightID));
 
 const form = ref({
+  id: null,
   userId: '',
-  flightId: '',
+  flightId: flightID,
   seatNumber: '',
   status: '',
   bookingDate: ''
@@ -39,7 +40,7 @@ const reservations = computed(() =>
     seatNumber: r.SeatNumber,
     amount: r.Amount || '-',
     paymentId: r.PaymentID || '-',
-    bookingDate: new Date(r.BookingDate).toLocaleString(),
+    bookingDate: r.BookingDate,
     status: r.Status
   }))
 );
@@ -65,7 +66,7 @@ function openModal(res = null, index = null) {
       flightId: flightID,
       seatNumber: res.seatNumber,
       status: res.status,
-      bookingDate: res.bookingDate.split('T')[0] + 'T' + res.bookingDate.split('T')[1].slice(0, 5)
+      bookingDate: res.bookingDate.slice(0, 16)
     };
     editIndex.value = index;
   } else {
@@ -108,7 +109,7 @@ async function saveReservation() {
     }
     closeModal();
   } catch (err) {
-    alert(err.message); 
+    alert(err.message);
     console.error(err);
   }
 }
@@ -118,8 +119,11 @@ async function deleteReservation(id) {
     try {
       await reservationStore.deleteReservation(id, flightID);
     } catch (err) {
-      alert('Failed to delete');
-      console.error(err);
+      if (err.response && err.response.data) {
+        alert(err.response.data);
+      } else {
+        alert('Failed to delete reservation');
+      }
     }
   }
 }

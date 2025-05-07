@@ -20,7 +20,7 @@ export const usePassengerStore = defineStore('passengerStore', {
 
     async loadValidReservations(flightID) {
       try {
-        const { data } = await axios.get(`/api/reservation/valid`, {
+        const { data } = await axios.get('/api/reservation/valid', {
           params: { flightID }
         })
         this.validReservations = data
@@ -30,36 +30,50 @@ export const usePassengerStore = defineStore('passengerStore', {
     },
 
     async savePassenger(passenger, isEditing) {
-      const matched = this.validReservations.find(
-        r => r.reservationId === passenger.reservationId && r.seatNumber === passenger.seat
-      )
-      const seatID = matched?.seatId
-    
-      if (!seatID) {
-        console.error('Cannot find seatID for seat:', passenger.seat)
-        alert('Cannot find SeatID from SeatNumber, check reservation')
-        return
-      }
-    
-      const payload = {
-        reservationId: passenger.reservationId,
-        seatID,
-        firstName: passenger.firstName,
-        middleName: passenger.middleName,
-        lastName: passenger.lastName,
-        birth: passenger.birth || null,
-        nationality: passenger.nationality,
-        passport: passenger.passport,
-        address: passenger.address
-      }
-    
       try {
         if (isEditing) {
+          // Update only personal information, do not touch Seat or Reservation.
+          const payload = {
+            firstName: passenger.firstName,
+            middleName: passenger.middleName,
+            lastName: passenger.lastName,
+            birth: passenger.birth || null,
+            nationality: passenger.nationality,
+            passport: passenger.passport,
+            address: passenger.address
+          }
           await axios.put(`/api/passenger/${passenger.id}`, payload)
         } else {
-          await axios.post(`/api/passenger`, payload)
+          // For new additions, get seatID from validReservations
+          const matched = this.validReservations.find(
+            r => r.reservationId === passenger.reservationId
+          )
+          const seatID = matched?.seatId
+    
+          if (!seatID) {
+            alert(`Cannot find SeatID for ReservationID ${passenger.reservationId}. Please check reservation status.`)
+            return
+          }
+    
+          const payload = {
+            reservationId: passenger.reservationId,
+            seatID,
+            firstName: passenger.firstName,
+            middleName: passenger.middleName,
+            lastName: passenger.lastName,
+            birth: passenger.birth || null,
+            nationality: passenger.nationality,
+            passport: passenger.passport,
+            address: passenger.address
+          }
+    
+          await axios.post('/api/passenger', payload)
         }
-        await this.loadPassengers()
+    
+        const flightID = passenger.flightID || this.passengers[0]?.FlightID
+        if (flightID) {
+          await this.loadPassengers(flightID)
+        }
       } catch (err) {
         console.error('Failed to save passenger:', err)
         throw err

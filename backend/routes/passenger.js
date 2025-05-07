@@ -68,21 +68,21 @@ router.post("/", async (req, res) => {
 });
 */
 
-// Update passenger
+// Update passenger (disallow reservationId and seatID updates)
 router.put("/:id", async (req, res) => {
   const passengerID = req.params.id;
   const {
-    reservationId, seatID, firstName, middleName, lastName, birth,
+    firstName, middleName, lastName, birth,
     nationality, passport, address
   } = req.body;
 
   try {
     await db.query(`
       UPDATE Passenger SET
-        ReservationID = ?, SeatID = ?, Firstname = ?, Middlename = ?, Lastname = ?, BirthDate = ?,
+        Firstname = ?, Middlename = ?, Lastname = ?, BirthDate = ?,
         Nationality = ?, PassportNumber = ?, Address = ?
       WHERE PassengerID = ?
-    `, [reservationId, seatID, firstName, middleName, lastName, birth, nationality, passport, address, passengerID]);
+    `, [firstName, middleName, lastName, birth, nationality, passport, address, passengerID]);
 
     res.json({ message: "Passenger updated" });
   } catch (err) {
@@ -91,14 +91,30 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Delete passenger
+// Delete passenger (only if reservation not confirmed)
 router.delete("/:id", async (req, res) => {
   const passengerID = req.params.id;
   try {
-    const [result] = await db.query("DELETE FROM Passenger WHERE PassengerID = ?", [passengerID]);
+    // Get associated reservation
+    const [rows] = await db.query(`
+      SELECT r.Status
+      FROM Passenger p
+      JOIN Reservation r ON p.ReservationID = r.ReservationID
+      WHERE p.PassengerID = ?
+    `, [passengerID]);
 
-    if (result.affectedRows === 0) return res.status(404).send("Passenger not found");
-    res.json({ message: "Passenger deleted" });
+    if (rows.length === 0) {
+      return res.status(404).send("Passenger not found");
+    }
+
+    const reservationStatus = rows[0].Status;
+    if (reservationStatus === 'Confirmed') {
+      return res.status(400).json({ error: "Cannot delete passenger with confirmed reservation." });
+    }
+
+    // Safe to delete
+    await db.query("DELETE FROM Passenger WHERE PassengerID = ?", [passengerID]);
+    res.json({ message: "Passenger deleted successfully." });
   } catch (err) {
     console.error(err);
     res.status(500).send("Failed to delete passenger");

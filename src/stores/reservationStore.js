@@ -33,9 +33,12 @@ export const useReservationStore = defineStore('reservation', {
     async updateReservation(id, data) {
       try {
         await axios.put(`/api/reservation/${id}`, data)
-        await this.loadReservations(data.flightID) 
+        await this.loadReservations(data.flightID)
       } catch (err) {
-        const message = err.response?.data || 'Failed to update reservation'
+        const message =
+          err.response?.data?.message || 
+          (typeof err.response?.data === 'string' ? err.response.data : '') || 
+          'Failed to update reservation'
         throw new Error(message)
       }
     },
