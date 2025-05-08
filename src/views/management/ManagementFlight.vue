@@ -213,18 +213,43 @@
               {{ header.label }}
             </div>
           </div>
+          <div v-if="paginatedFlights.length > 0">
+            <div
+              class="flight-row"
+              v-for="(flight, index) in paginatedFlights"
+              :key="index"
+            >
+              <div class="flight-cell seat-cell">
+                <div
+                  class="seat-icon"
+                  @click="
+                    router.push({
+                      name: 'management-seat',
+                      params: {
+                        airlineID: airlineID,
+                        flightID: flight.flightID,
+                      },
+                    })
+                  "
+                >
+                  <img
+                    v-if="flight.isSeatAvailable === true"
+                    src="/management-pic/management-flight/available-seat.png"
+                    alt="Available Seat"
+                  />
+                  <img
+                    v-else
+                    src="/management-pic/management-flight/not-available-seat.png"
+                    alt="Not available Seat"
+                  />
+                </div>
+              </div>
 
-          <div
-            class="flight-row"
-            v-for="(flight, index) in paginatedFlights"
-            :key="index"
-          >
-            <div class="flight-cell seat-cell">
               <div
-                class="seat-icon"
+                class="flight-cell departure-cell"
                 @click="
                   router.push({
-                    name: 'management-seat',
+                    name: 'PassengerManagement',
                     params: {
                       airlineID: airlineID,
                       flightID: flight.flightID,
@@ -232,174 +257,153 @@
                   })
                 "
               >
-                <img
-                  v-if="flight.isSeatAvailable === true"
-                  src="/management-pic/management-flight/available-seat.png"
-                  alt="Available Seat"
-                />
-                <img
-                  v-else
-                  src="/management-pic/management-flight/not-available-seat.png"
-                  alt="Not available Seat"
-                />
-              </div>
-            </div>
-
-            <div
-              class="flight-cell departure-cell"
-              @click="
-                router.push({
-                  name: 'PassengerManagement',
-                  params: {
-                    airlineID: airlineID,
-                    flightID: flight.flightID,
-                  },
-                })
-              "
-            >
-              <div class="flight-info">
-                <div class="flight-icon">
-                  <img src="/dashboard-pic/plane-booking-up.png" alt="Plane" />
-                </div>
-                <div class="flight-details">
-                  <div class="flight-code">
-                    {{ flight.departure.airport }}
+                <div class="flight-info">
+                  <div class="flight-icon">
+                    <img src="/dashboard-pic/plane-booking-up.png" alt="Plane" />
                   </div>
-                  <div class="flight-time">
-                    {{ flight.departure.time }}
+                  <div class="flight-details">
+                    <div class="flight-code">
+                      {{ flight.departure.airport }}
+                    </div>
+                    <div class="flight-time">
+                      {{ flight.departure.time }}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            <div
-              class="flight-cell route-cell"
-              @click="
-                router.push({
-                  name: 'PassengerManagement',
-                  params: {
-                    airlineID: airlineID,
-                    flightID: flight.flightID,
-                  },
-                })
-              "
-            >
-              <div class="flight-line">
-                <p>{{ getFlightDurationHours(flight) }} hrs</p>
-                <div class="line">
-                  <img
-                    src="/dashboard-pic/icons/plane-icon.png"
-                    
-                    :class="{
-                      animate: flight.flightStatus === 'Pending' || flight.flightStatus === 'Delayed',
-                      center: flight.flightStatus !== 'Pending' && flight.flightStatus !== 'Delayed',
-                    }"
-                    alt="Plane Icon"
-                  />
-                </div>
-                <p>{{ flight.duration.stop }} stop</p>
-                <div v-if="flight.stopOvers?.length" class="stopover-names">
-                  <small>{{ flight.stopOvers.join(" → ") }} ({{ minutesToHours(flight.duration.time) }})</small>
-                </div>
-              </div>
-            </div>
-
-            <div
-              class="flight-cell destination-cell"
-              @click="
-                router.push({
-                  name: 'PassengerManagement',
-                  params: {
-                    flightID: flight.flightID,
-                    airlineID: airlineID,
-                  },
-                })
-              "
-            >
-              <div class="flight-info">
-                <div class="flight-icon">
-                  <img src="/dashboard-pic/plane-booking-down.png" alt="Plane" />
-                </div>
-                <div class="flight-details">
-                  <div class="flight-code">
-                    {{ flight.destination.airport }}
-                  </div>
-                  <div class="flight-time">
-                    {{ flight.destination.time }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="flight-cell date-cell">
-              {{ formatDate(flight.departure.date) }}
-            </div>
-
-            <div
-              class="flight-cell aircraft-cell"
-              @click="showModalInfoAircraft(flight.aircraftID)"
-            >
-            <p :class="getAircraftStatusClass(flight.aircraftID)">
-              {{ aircraftStore.getAircraftByID(flight.aircraftID)?.model || "Unknown Model" }}
-            </p>
-            </div>
-
-            <div class="flight-cell status-cell">
-              <span :class="['status-badge', `status-${flight.flightStatus.toLowerCase()}`]">
-                {{ capitalize(flight.flightStatus) }}
-              </span>
-            </div>
-
-            <div class="flight-cell action-cell">
-              <button
-                class="edit-button"
-                @click="showEditFlightModal(flight.flightID)"
+              <div
+                class="flight-cell route-cell"
+                @click="
+                  router.push({
+                    name: 'PassengerManagement',
+                    params: {
+                      airlineID: airlineID,
+                      flightID: flight.flightID,
+                    },
+                  })
+                "
               >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                >
-                  <path
-                    d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
-                  ></path>
-                  <path
-                    d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
-                  ></path>
-                </svg>
-              </button>
-              <button
-                class="delete-button"
-                @click="showDeleteFlightConfirmModal(flight.flightID)"
+                <div class="flight-line">
+                  <p>{{ getFlightDurationHours(flight) }} hrs</p>
+                  <div class="line">
+                    <img
+                      src="/dashboard-pic/icons/plane-icon.png"
+                      
+                      :class="{
+                        animate: flight.flightStatus === 'Pending' || flight.flightStatus === 'Delayed',
+                        center: flight.flightStatus !== 'Pending' && flight.flightStatus !== 'Delayed',
+                      }"
+                      alt="Plane Icon"
+                    />
+                  </div>
+                  <p>{{ flight.duration.stop }} stop</p>
+                  <div v-if="flight.stopOvers?.length" class="stopover-names">
+                    <small>{{ flight.stopOvers.join(" → ") }} ({{ minutesToHours(flight.duration.time) }})</small>
+                  </div>
+                </div>
+              </div>
+
+              <div
+                class="flight-cell destination-cell"
+                @click="
+                  router.push({
+                    name: 'PassengerManagement',
+                    params: {
+                      flightID: flight.flightID,
+                      airlineID: airlineID,
+                    },
+                  })
+                "
               >
-                <svg
-                  width="17"
-                  height="21"
-                  viewBox="0 0 17 21"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
+                <div class="flight-info">
+                  <div class="flight-icon">
+                    <img src="/dashboard-pic/plane-booking-down.png" alt="Plane" />
+                  </div>
+                  <div class="flight-details">
+                    <div class="flight-code">
+                      {{ flight.destination.airport }}
+                    </div>
+                    <div class="flight-time">
+                      {{ flight.destination.time }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="flight-cell date-cell">
+                {{ formatDate(flight.departure.date) }}
+              </div>
+
+              <div
+                class="flight-cell aircraft-cell"
+                @click="showModalInfoAircraft(flight.aircraftID)"
+              >
+              <p :class="getAircraftStatusClass(flight.aircraftID)">
+                {{ aircraftStore.getAircraftByID(flight.aircraftID)?.model || "Unknown Model" }}
+              </p>
+              </div>
+
+              <div class="flight-cell status-cell">
+                <span :class="['status-badge', `status-${flight.flightStatus.toLowerCase()}`]">
+                  {{ capitalize(flight.flightStatus) }}
+                </span>
+              </div>
+
+              <div class="flight-cell action-cell">
+                <button
+                  class="edit-button"
+                  @click="showEditFlightModal(flight.flightID)"
                 >
-                  <path
-                    fill-rule="evenodd"
-                    clip-rule="evenodd"
-                    d="M12.625 3.62512L12.4793 3.33499C11.7256 1.82737 10.1848 0.875 8.49931 0.875C6.81382 0.875 5.27301 1.82737 4.51937 3.33499L4.375 3.62512H12.625Z"
-                    stroke="#FB8B01"
-                    stroke-width="1.5"
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
                     stroke-linecap="round"
                     stroke-linejoin="round"
-                  />
-                  <path
-                    d="M6.73821 10.4278C6.44531 10.1349 5.97044 10.1349 5.67754 10.4278C5.38465 10.7207 5.38465 11.1956 5.67754 11.4884L6.73821 10.4278ZM7.96967 13.7806C8.26256 14.0735 8.73744 14.0735 9.03033 13.7806C9.32322 13.4877 9.32322 13.0128 9.03033 12.7199L7.96967 13.7806ZM5.67754 15.012C5.38465 15.3049 5.38465 15.7798 5.67754 16.0727C5.97044 16.3656 6.44531 16.3656 6.73821 16.0727L5.67754 15.012ZM9.03033 13.7806C9.32322 13.4877 9.32322 13.0128 9.03033 12.7199C8.73744 12.427 8.26256 12.427 7.96967 12.7199L9.03033 13.7806ZM11.3225 11.4884C11.6153 11.1956 11.6153 10.7207 11.3225 10.4278C11.0296 10.1349 10.5547 10.1349 10.2618 10.4278L11.3225 11.4884ZM7.96967 12.7199C7.67678 13.0128 7.67678 13.4877 7.96967 13.7806C8.26256 14.0735 8.73744 14.0735 9.03033 13.7806L7.96967 12.7199ZM10.2618 16.0727C10.5547 16.3656 11.0296 16.3656 11.3225 16.0727C11.6153 15.7798 11.6153 15.3049 11.3225 15.012L10.2618 16.0727ZM9.03033 12.7199C8.73744 12.427 8.26256 12.427 7.96967 12.7199C7.67678 13.0128 7.67678 13.4877 7.96967 13.7806L9.03033 12.7199ZM15.375 4.37524C15.7892 4.37524 16.125 4.03946 16.125 3.62524C16.125 3.21103 15.7892 2.87524 15.375 2.87524V4.37524ZM12.625 2.87524C12.2108 2.87524 11.875 3.21103 11.875 3.62524C11.875 4.03946 12.2108 4.37524 12.625 4.37524V2.87524ZM1.625 2.87524C1.21079 2.87524 0.875 3.21103 0.875 3.62524C0.875 4.03946 1.21079 4.37524 1.625 4.37524V2.87524ZM4.375 4.37524C4.78921 4.37524 5.125 4.03946 5.125 3.62524C5.125 3.21103 4.78921 2.87524 4.375 2.87524V4.37524ZM2.63182 19.1184L2.10149 19.6488H2.10149L2.63182 19.1184ZM1.625 16.6877H2.375H1.625ZM5.67754 11.4884L7.96967 13.7806L9.03033 12.7199L6.73821 10.4278L5.67754 11.4884ZM6.73821 16.0727L9.03033 13.7806L7.96967 12.7199L5.67754 15.012L6.73821 16.0727ZM10.2618 10.4278L7.96967 12.7199L9.03033 13.7806L11.3225 11.4884L10.2618 10.4278ZM11.3225 15.012L9.03033 12.7199L7.96967 13.7806L10.2618 16.0727L11.3225 15.012ZM15.375 2.87524H12.625V4.37524H15.375V2.87524ZM1.625 4.37524H4.375V2.87524H1.625V4.37524ZM2.77037 7.12524H14.2296V5.62524H2.77037V7.12524ZM14.2296 7.12524C14.448 7.12524 14.625 7.30226 14.625 7.52062H16.125C16.125 6.47383 15.2764 5.62524 14.2296 5.62524V7.12524ZM14.625 7.52062V16.6877H16.125V7.52062H14.625ZM14.625 16.6877C14.625 18.172 13.4218 19.3752 11.9375 19.3752V20.8752C14.2502 20.8752 16.125 19.0004 16.125 16.6877H14.625ZM11.9375 19.3752H5.0625V20.8752H11.9375V19.3752ZM5.0625 19.3752C4.34973 19.3752 3.66615 19.0921 3.16215 18.5881L2.10149 19.6488C2.8868 20.4341 3.95191 20.8752 5.0625 20.8752V19.3752ZM3.16215 18.5881C2.65815 18.0841 2.375 17.4005 2.375 16.6877H0.875C0.875 17.7983 1.31618 18.8634 2.10149 19.6488L3.16215 18.5881ZM2.375 16.6877V7.52062H0.875V16.6877H2.375ZM2.375 7.52062C2.375 7.30226 2.55202 7.12524 2.77037 7.12524V5.62524C1.72359 5.62524 0.875 6.47383 0.875 7.52062H2.375Z"
-                    fill="#FB8B01"
-                  />
-                </svg>
-              </button>
+                  >
+                    <path
+                      d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"
+                    ></path>
+                    <path
+                      d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"
+                    ></path>
+                  </svg>
+                </button>
+                <button
+                  class="delete-button"
+                  @click="showDeleteFlightConfirmModal(flight.flightID)"
+                >
+                  <svg
+                    width="17"
+                    height="21"
+                    viewBox="0 0 17 21"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M12.625 3.62512L12.4793 3.33499C11.7256 1.82737 10.1848 0.875 8.49931 0.875C6.81382 0.875 5.27301 1.82737 4.51937 3.33499L4.375 3.62512H12.625Z"
+                      stroke="#FB8B01"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                    <path
+                      d="M6.73821 10.4278C6.44531 10.1349 5.97044 10.1349 5.67754 10.4278C5.38465 10.7207 5.38465 11.1956 5.67754 11.4884L6.73821 10.4278ZM7.96967 13.7806C8.26256 14.0735 8.73744 14.0735 9.03033 13.7806C9.32322 13.4877 9.32322 13.0128 9.03033 12.7199L7.96967 13.7806ZM5.67754 15.012C5.38465 15.3049 5.38465 15.7798 5.67754 16.0727C5.97044 16.3656 6.44531 16.3656 6.73821 16.0727L5.67754 15.012ZM9.03033 13.7806C9.32322 13.4877 9.32322 13.0128 9.03033 12.7199C8.73744 12.427 8.26256 12.427 7.96967 12.7199L9.03033 13.7806ZM11.3225 11.4884C11.6153 11.1956 11.6153 10.7207 11.3225 10.4278C11.0296 10.1349 10.5547 10.1349 10.2618 10.4278L11.3225 11.4884ZM7.96967 12.7199C7.67678 13.0128 7.67678 13.4877 7.96967 13.7806C8.26256 14.0735 8.73744 14.0735 9.03033 13.7806L7.96967 12.7199ZM10.2618 16.0727C10.5547 16.3656 11.0296 16.3656 11.3225 16.0727C11.6153 15.7798 11.6153 15.3049 11.3225 15.012L10.2618 16.0727ZM9.03033 12.7199C8.73744 12.427 8.26256 12.427 7.96967 12.7199C7.67678 13.0128 7.67678 13.4877 7.96967 13.7806L9.03033 12.7199ZM15.375 4.37524C15.7892 4.37524 16.125 4.03946 16.125 3.62524C16.125 3.21103 15.7892 2.87524 15.375 2.87524V4.37524ZM12.625 2.87524C12.2108 2.87524 11.875 3.21103 11.875 3.62524C11.875 4.03946 12.2108 4.37524 12.625 4.37524V2.87524ZM1.625 2.87524C1.21079 2.87524 0.875 3.21103 0.875 3.62524C0.875 4.03946 1.21079 4.37524 1.625 4.37524V2.87524ZM4.375 4.37524C4.78921 4.37524 5.125 4.03946 5.125 3.62524C5.125 3.21103 4.78921 2.87524 4.375 2.87524V4.37524ZM2.63182 19.1184L2.10149 19.6488H2.10149L2.63182 19.1184ZM1.625 16.6877H2.375H1.625ZM5.67754 11.4884L7.96967 13.7806L9.03033 12.7199L6.73821 10.4278L5.67754 11.4884ZM6.73821 16.0727L9.03033 13.7806L7.96967 12.7199L5.67754 15.012L6.73821 16.0727ZM10.2618 10.4278L7.96967 12.7199L9.03033 13.7806L11.3225 11.4884L10.2618 10.4278ZM11.3225 15.012L9.03033 12.7199L7.96967 13.7806L10.2618 16.0727L11.3225 15.012ZM15.375 2.87524H12.625V4.37524H15.375V2.87524ZM1.625 4.37524H4.375V2.87524H1.625V4.37524ZM2.77037 7.12524H14.2296V5.62524H2.77037V7.12524ZM14.2296 7.12524C14.448 7.12524 14.625 7.30226 14.625 7.52062H16.125C16.125 6.47383 15.2764 5.62524 14.2296 5.62524V7.12524ZM14.625 7.52062V16.6877H16.125V7.52062H14.625ZM14.625 16.6877C14.625 18.172 13.4218 19.3752 11.9375 19.3752V20.8752C14.2502 20.8752 16.125 19.0004 16.125 16.6877H14.625ZM11.9375 19.3752H5.0625V20.8752H11.9375V19.3752ZM5.0625 19.3752C4.34973 19.3752 3.66615 19.0921 3.16215 18.5881L2.10149 19.6488C2.8868 20.4341 3.95191 20.8752 5.0625 20.8752V19.3752ZM3.16215 18.5881C2.65815 18.0841 2.375 17.4005 2.375 16.6877H0.875C0.875 17.7983 1.31618 18.8634 2.10149 19.6488L3.16215 18.5881ZM2.375 16.6877V7.52062H0.875V16.6877H2.375ZM2.375 7.52062C2.375 7.30226 2.55202 7.12524 2.77037 7.12524V5.62524C1.72359 5.62524 0.875 6.47383 0.875 7.52062H2.375Z"
+                      fill="#FB8B01"
+                    />
+                  </svg>
+                </button>
+              </div>
             </div>
+          </div>
+          <div v-else style="text-align: center; padding: 3rem 1rem; font-size: 1.4rem; color: #888;">
+            <strong>No Flights for this Airline.</strong>
           </div>
         </div>
         <!-- :flights="filteredFlights" -->
