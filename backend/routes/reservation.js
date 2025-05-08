@@ -175,11 +175,18 @@ router.put("/:id", async (req, res) => {
       return res.status(400).send("Missing required fields");
     }
 
-    // Check user
-    const [userResult] = await db.query("SELECT * FROM User WHERE UserID = ?", [userID]);
-    if (userResult.length === 0) return res.status(404).send("User not found");
+    // Get Reservation.Status to check
+    const [originalReservation] = await db.query(
+      "SELECT Status FROM Reservation WHERE ReservationID = ?",
+      [reservationID]
+    );
+    const previousStatus = originalReservation[0]?.Status;
 
-    // Get SeatID, SeatClass, and Available from seatNumber
+    // Get Payment.Status to check
+    const [paymentCheck] = await db.query("SELECT * FROM Payment WHERE ReservationID = ?", [reservationID]);
+    const existingPaymentStatus = paymentCheck[0]?.Status || null;
+
+    // Check seat
     const [seatResult] = await db.query(
       "SELECT SeatID, SeatClass, Available FROM Seat WHERE SeatNumber = ? AND FlightID = ?",
       [seatNumber, flightID]
@@ -194,17 +201,11 @@ router.put("/:id", async (req, res) => {
 
     const seatClass = seatResult[0].SeatClass;
 
-    // Get Flight Price
+    // Pricing logic
     const [flightResult] = await db.query("SELECT Price FROM Flight WHERE FlightID = ?", [flightID]);
-    if (flightResult.length === 0) return res.status(404).send("Flight not found");
-
-    const basePrice = flightResult[0].Price;
-
-    // Get Seat Multiplier
+    const basePrice = flightResult[0]?.Price;
     const [multiplierResult] = await db.query("SELECT Multiplier FROM SeatMultiplier WHERE SeatClass = ?", [seatClass]);
-    if (multiplierResult.length === 0) return res.status(404).send("Seat multiplier not found");
-
-    const multiplier = multiplierResult[0].Multiplier;
+    const multiplier = multiplierResult[0]?.Multiplier;
     const amount = basePrice * multiplier;
 
     // Update Reservation
@@ -213,25 +214,31 @@ router.put("/:id", async (req, res) => {
       [userID, flightID, seatID, status, bookingDate, reservationID]
     );
 
-    const paymentStatus = status === 'Confirmed' ? 'Successful' : 'Pending';
+    // Do not overwrite Payment.Status in case 0f == 'Successful'
+    const finalStatus = existingPaymentStatus === 'Successful'
+      ? 'Successful'
+      : (status === 'Confirmed' ? 'Successful' : 'Pending');
 
-    // Update or Insert Payment
-    const [paymentCheck] = await db.query("SELECT * FROM Payment WHERE ReservationID = ?", [reservationID]);
     if (paymentCheck.length > 0) {
       await db.query(
         "UPDATE Payment SET UserID = ?, Amount = ?, Status = ? WHERE ReservationID = ?",
-        [userID, amount, paymentStatus, reservationID]
+        [userID, amount, finalStatus, reservationID]
       );
     } else {
       await db.query(
         "INSERT INTO Payment (ReservationID, UserID, Amount, PaymentMethod, PaymentDate, Status) VALUES (?, ?, ?, ?, ?, ?)",
-        [reservationID, userID, amount, null, null, paymentStatus]
+        [reservationID, userID, amount, null, null, finalStatus]
       );
     }
 
-    // Update Seat to unavailable
-    await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ?", [seatID]);
+    // Update Seat.Available from New Reservation.Status
+    if (status === 'Pending' || status === 'Confirmed') {
+      await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ?", [seatID]);
+    } else if (status === 'Canceled') {
+      await db.query("UPDATE Seat SET Available = 'Yes' WHERE SeatID = ?", [seatID]);
+    }
 
+    // If Reservation Status == 'Confirmed' → Update & Add Passenger
     if (status === 'Confirmed') {
       const {
         Firstname = null,
@@ -259,25 +266,16 @@ router.put("/:id", async (req, res) => {
       }
     }
 
-    if (status === 'Pending') {
+    // If new Reservation Status == 'Pending' / 'Canceled'
+    if (status === 'Pending' || status === 'Canceled') {
       await db.query("DELETE FROM Passenger WHERE ReservationID = ?", [reservationID]);
-      await db.query("UPDATE Seat SET Available = 'No' WHERE SeatID = ?", [seatID]);
-    }
 
-    if (status === 'Canceled') { 
-      const [paymentResult] = await db.query("SELECT * FROM Payment WHERE ReservationID = ?", [reservationID]); 
-      
-      // Always delete passengers 
-      await db.query("DELETE FROM Passenger WHERE ReservationID = ?", [reservationID]); 
-      
-      // Do not delete Payment if Status is Successful. 
-      if (!paymentResult.length || paymentResult[0].Status !== 'Successful') { 
-      await db.query("DELETE FROM Payment WHERE ReservationID = ?", [reservationID]); 
-      } 
-      
-      // Always return seat to available 
-      await db.query("UPDATE Seat SET Available = 'Yes' WHERE SeatID = ?", [seatID]);
+      if (existingPaymentStatus !== 'Successful') {
+        await db.query("DELETE FROM Payment WHERE ReservationID = ?", [reservationID]);
+      } else {
+        console.log(`Kept Payment for Reservation ${reservationID} (already successful)`);
       }
+    }
 
     res.json({ message: "Reservation updated successfully" });
 
@@ -287,53 +285,6 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// Auto-confirm reservation if payment becomes successful
-router.put("/auto-confirm/:paymentID", async (req, res) => {
-  try {
-    const paymentID = req.params.paymentID;
-
-    const [payResult] = await db.query("SELECT * FROM Payment WHERE PaymentID = ?", [paymentID]);
-    if (payResult.length === 0) return res.status(404).send("Payment not found");
-
-    const payment = payResult[0];
-    if (payment.Status !== 'Successful') return res.status(400).send("Payment not successful yet");
-
-    await db.query("UPDATE Reservation SET Status = 'Confirmed' WHERE ReservationID = ?", [payment.ReservationID]);
-
-    res.json({ message: "Reservation confirmed." });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error confirming reservation");
-  }
-});
-
-// Cancel Reservation with conditional cleanup
-router.put("/cancel/:id", async (req, res) => {
-  try {
-    const reservationID = req.params.id;
-
-    const [resResult] = await db.query("SELECT * FROM Reservation WHERE ReservationID = ?", [reservationID]);
-    if (resResult.length === 0) return res.status(404).send("Reservation not found");
-
-    const [paymentResult] = await db.query("SELECT * FROM Payment WHERE ReservationID = ?", [reservationID]);
-    const payment = paymentResult[0];
-
-    await db.query("UPDATE Reservation SET Status = 'Canceled' WHERE ReservationID = ?", [reservationID]);
-
-    await db.query("DELETE FROM Passenger WHERE ReservationID = ?", [reservationID]);
-
-    if (!payment || payment.Status !== 'Successful') {
-      await db.query("DELETE FROM Payment WHERE ReservationID = ?", [reservationID]);
-    }
-
-    await db.query("UPDATE Seat SET Available = 'Yes' WHERE SeatID = ?", [resResult[0].SeatID]);
-
-    res.json({ message: "Reservation canceled and related records handled." });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Error canceling reservation");
-  }
-});
 
 // Delete Reservation (Only allowed if Payment != Successful || Status != Confirmed)
 router.delete("/:id", async (req, res) => {
@@ -383,6 +334,16 @@ router.get("/valid", async (req, res) => {
     console.error("Failed to load valid reservations:", err);
     res.status(500).json({ error: "Database error" });
   }
+});
+
+// Get Seat Avalaible for Flight
+router.get('/seat/available', async (req, res) => {
+  const { flightID } = req.query;
+  const [seats] = await db.query(
+    `SELECT SeatNumber AS SeatNumber FROM Seat WHERE FlightID = ? AND Available = 'Yes'`,
+    [flightID]
+  );
+  res.json(seats);
 });
 
 export default router;

@@ -45,6 +45,12 @@ export const useReservationStore = defineStore('reservation', {
     async deleteReservation(id, flightID) {
       await axios.delete(`/api/reservation/${id}`)
       await this.loadReservations(flightID)
+    },
+    async loadAvailableSeats(flightID) {
+      const res = await axios.get(`/api/reservation/seat/available`, { params: { flightID } });
+      return res.data.map(seat => ({
+        SeatNumber: seat.SeatNumber || seat.seatNumber 
+      }));
     }
   }
 })

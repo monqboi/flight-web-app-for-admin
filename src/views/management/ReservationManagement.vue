@@ -17,6 +17,7 @@ const airlineID = route.params.airlineID;
 const reservationStore = useReservationStore();
 const flightStore = useFlightStore();
 const flight = computed(() => flightStore.getFlightByID(flightID));
+const availableSeats = ref([]);
 
 const form = ref({
   id: null,
@@ -30,6 +31,8 @@ const form = ref({
 onMounted(async () => {
   await flightStore.loadFlights();
   await reservationStore.loadReservations(flightID);
+
+  availableSeats.value = await reservationStore.loadAvailableSeats(flightID);
 });
 
 const reservations = computed(() =>
@@ -58,8 +61,14 @@ const filteredReservations = computed(() => {
   });
 });
 
-function openModal(res = null, index = null) {
-  if (res) {
+async function openModal(res = null, index = null) {
+  const seats = await reservationStore.loadAvailableSeats(flightID);
+
+  if (res) {  
+    if (!seats.find(s => s.SeatNumber === res.seatNumber)) {
+      seats.push({ SeatNumber: res.seatNumber });
+    }
+
     form.value = {
       id: res.id,
       userId: res.userId,
@@ -80,6 +89,8 @@ function openModal(res = null, index = null) {
     };
     editIndex.value = null;
   }
+
+  availableSeats.value = seats;
   showModal.value = true;
 }
 
@@ -176,49 +187,53 @@ function goBack() {
           <button class="add-btn" @click="openModal()">+ Add</button>
         </div>
       </div>
-
-      <div class="payment-table">
-        <table class="passenger-table">
-          <thead>
-            <tr>
-              <th class="spacer-col"></th>
-              <th>Reservation ID</th>
-              <th>User</th>
-              <th>Seat Number</th>
-              <th>Amount</th>
-              <th>Payment ID</th>
-              <th>Booking Date</th>
-              <th>Status</th>
-              <th>Action</th>
-              <th class="spacer-col"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="ticket-row" v-for="(res, index) in filteredReservations" :key="res.id">
-              <td>#{{ res.id }}</td>
-              <td>{{ res.username }}<br /><span class="small-id">#{{ res.userId }}</span></td>
-              <td>{{ res.seatNumber }}</td>
-              <td>{{ res.amount }}</td>
-              <td>#{{ res.paymentId }}</td>
-              <td>{{ res.bookingDate }}</td>
-              <td>
-                <span class="status" :class="{
-                  success: res.status === 'Confirmed',
-                  failed: res.status === 'Canceled',
-                  pending: res.status === 'Pending'
-                }">
-                  {{ res.status }}
-                </span>
-              </td>
-              <td>
-                <div class="action-buttons" >
-                  <i class="fa fa-edit" @click="openModal(res, index)"></i>
-                  <font-awesome-icon icon="trash" @click="deleteReservation(res.id)" title="Delete" class="action-icon" />
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-if="filteredReservations.length > 0">
+        <div class="payment-table">
+          <table class="passenger-table">
+            <thead>
+              <tr>
+                <th class="spacer-col"></th>
+                <th>Reservation ID</th>
+                <th>User</th>
+                <th>Seat Number</th>
+                <th>Amount</th>
+                <th>Payment ID</th>
+                <th>Booking Date</th>
+                <th>Status</th>
+                <th>Action</th>
+                <th class="spacer-col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="ticket-row" v-for="(res, index) in filteredReservations" :key="res.id">
+                <td>#{{ res.id }}</td>
+                <td>{{ res.username }}<br /><span class="small-id">#{{ res.userId }}</span></td>
+                <td>{{ res.seatNumber }}</td>
+                <td>{{ res.amount }}</td>
+                <td>#{{ res.paymentId }}</td>
+                <td>{{ res.bookingDate }}</td>
+                <td>
+                  <span class="status" :class="{
+                    success: res.status === 'Confirmed',
+                    failed: res.status === 'Canceled',
+                    pending: res.status === 'Pending'
+                  }">
+                    {{ res.status }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-buttons" >
+                    <i class="fa fa-edit" @click="openModal(res, index)"></i>
+                    <font-awesome-icon icon="trash" @click="deleteReservation(res.id)" title="Delete" class="action-icon" />
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div v-else style="text-align: center; padding: 3rem 1rem; font-size: 1.4rem; color: #888;">
+        <strong>No Reservations for this Flight.</strong>
       </div>
 
       <div v-if="showModal" class="modal">
@@ -226,7 +241,12 @@ function goBack() {
           <h3>{{ editIndex !== null ? 'Edit Reservation' : 'Add Reservation' }}</h3>
           <div class="form-row">
             <input type="number" v-model="form.userId" placeholder="User ID" />
-            <input type="text" v-model="form.seatNumber" placeholder="Seat Number" />
+            <select v-model="form.seatNumber" class="seat-select">
+              <option disabled value="">Select Seat</option>
+              <option v-for="s in availableSeats" :key="s.SeatNumber" :value="s.SeatNumber">
+                {{ s.SeatNumber }}
+              </option>
+            </select>
             <input type="number" v-model="form.flightId" disabled />
           </div>
 
@@ -391,6 +411,14 @@ function goBack() {
   border: 1px solid #ccc;
   }
   
+  .seat-select {
+  flex: 1;
+  padding: 6px;
+  font-size: 14px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  }
+
   .modal-actions {
   display: flex;
   justify-content: center;

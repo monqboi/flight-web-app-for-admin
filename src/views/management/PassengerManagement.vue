@@ -164,43 +164,46 @@ function goBack() {
           </button>
         </div>
       </div>
-
-      <div class="payment-table">
-        <table class="passenger-table">
-          <thead>
-            <tr>
-              <th class="spacer-col"></th>
-              <th>Seat Number</th>
-              <th>User</th>
-              <th>Full Name</th>
-              <th>Passport No.</th>
-              <th>Nationality</th>
-              <th>Birthdate</th>
-              <th>Address</th>
-              <th>Action</th>
-              <th class="spacer-col"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(p, index) in filtered" :key="p.PassengerID" class="ticket-row">
-              <td>#{{ p.SeatNumber }}</td>
-              <td>{{ p.Username }}<br><span class="small-id">#{{ p.UserID }}</span></td>
-              <td>{{ (p.Firstname || '') + ' ' + (p.Middlename || '-') + ' ' + (p.Lastname || '') }}</td>
-              <td>{{ p.PassportNumber || '-' }}</td>
-              <td>{{ p.Nationality || '-' }}</td>
-              <td>{{ p.BirthDate ? formatDate(p.BirthDate) : '-' }}</td>
-              <td>{{ p.Address || '-' }}</td>
-              <td>
-                <div class="action-buttons">
-                  <i class="fa fa-edit" @click="openModal(p, index)"></i>
-                  <!--<font-awesome-icon icon="trash" @click="deletePassenger(p.PassengerID)" />-->
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+      <div v-if="filtered.length > 0">
+        <div class="payment-table">
+          <table class="passenger-table">
+            <thead>
+              <tr>
+                <th class="spacer-col"></th>
+                <th>Seat Number</th>
+                <th>User</th>
+                <th>Full Name</th>
+                <th>Passport No.</th>
+                <th>Nationality</th>
+                <th>Birthdate</th>
+                <th>Address</th>
+                <th>Action</th>
+                <th class="spacer-col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="(p, index) in filtered" :key="p.PassengerID" class="ticket-row">
+                <td>#{{ p.SeatNumber }}</td>
+                <td>{{ p.Username }}<br><span class="small-id">#{{ p.UserID }}</span></td>
+                <td>{{ (p.Firstname || '') + ' ' + (p.Middlename || '-') + ' ' + (p.Lastname || '') }}</td>
+                <td>{{ p.PassportNumber || '-' }}</td>
+                <td>{{ p.Nationality || '-' }}</td>
+                <td>{{ p.BirthDate ? formatDate(p.BirthDate) : '-' }}</td>
+                <td>{{ p.Address || '-' }}</td>
+                <td>
+                  <div class="action-buttons">
+                    <i class="fa fa-edit" @click="openModal(p, index)"></i>
+                    <!--<font-awesome-icon icon="trash" @click="deletePassenger(p.PassengerID)" />-->
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-
+      <div v-else style="text-align: center; padding: 3rem 1rem; font-size: 1.4rem; color: #888;">
+        <strong>No Passengers for this Flight.</strong>
+      </div>
       <div v-if="showModal" class="modal">
         <div class="modal-content user-form">
           <h3>{{ isEditing ? 'Modify Passenger' : 'Add Passenger' }}</h3>
