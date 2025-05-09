@@ -1,6 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import db from "./db.js";
+import authRouter from "./routes/auth.js";
+import adminRouter from './routes/admin.js';
+import userRouter from "./routes/users.js";
+import seatRouter from "./routes/seats.js";
 import airlineRouter from "./routes/airline.js";
 import flightRouter from "./routes/flight.js";
 import reservationRouter from "./routes/reservation.js";
@@ -23,6 +27,10 @@ app.get('/', (req, res) => {
 });
 
 // Use routers
+app.use("/auth", authRouter);
+app.use('/api/admins', adminRouter);
+app.use("/users", userRouter);
+app.use("/api/seats", seatRouter);
 app.use("/api/airline", airlineRouter);
 app.use("/api/flight", flightRouter);
 app.use("/api/aircraft", aircraftRouter);
