@@ -6,8 +6,7 @@
 ### 2. Install dependencies: 
 Open Terminal to install Vue, Express, MySQL2, Cors, and Axios.
 - npm create vite@latest
-- cd <project-name>
-- npm create vite@latest
+- cd project-name
 - npm install axios
 - cd backend
   - npm init -y
