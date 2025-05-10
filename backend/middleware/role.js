@@ -28,7 +28,7 @@ export function verifyToken(req, res, next) {
 // ✅ Middleware: Check if user's role is allowed
 export function allowRoles(...allowedRoles) {
   return (req, res, next) => {
-    if (!req.user || !allowedRoles.includes(req.user.role)) {
+    if (!req.user || !allowedRoles.map(r => r.toLowerCase()).includes(req.user.role.toLowerCase())) {
       return res.status(403).json({ error: 'Permission denied' });
     }
     next();

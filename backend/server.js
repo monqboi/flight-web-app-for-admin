@@ -27,9 +27,9 @@ app.get('/', (req, res) => {
 });
 
 // Use routers
-app.use("/auth", authRouter);
+app.use("/api/auth", authRouter);
 app.use('/api/admins', adminRouter);
-app.use("/users", userRouter);
+app.use("/api/users", userRouter);
 app.use("/api/seats", seatRouter);
 app.use("/api/airline", airlineRouter);
 app.use("/api/flight", flightRouter);
