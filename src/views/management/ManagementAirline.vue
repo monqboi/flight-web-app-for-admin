@@ -1,13 +1,17 @@
 <script setup>
 import ModalAddAirline from "@/components/management-airline/ModalAddAirline.vue";
-import { useAirlineStore } from "@/stores/airlineStore";
+import { useAirlineStore } from "@/stores/airlineStore";  
 import { useRouter } from "vue-router";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, computed } from "vue";
+import ModalConfirm from "@/components/ModalConfirm.vue";
 
 const airlineStore = useAirlineStore();
 const router = useRouter();
 const isShowModalAddAirline = ref(false);
 const selectedAirline = ref(null);
+const isShowConfirmModal = ref(false);
+const confirmMode = ref("");  
+const airline = computed(() => airlineStore.getAirlineByID(airlineID));
 
 onMounted(() => {
   airlineStore.loadAirlines();
@@ -39,6 +43,20 @@ const closeModalAddAirline = () => {
 const handleSearch = (event) => {
   airlineStore.setSearchQuery(event.target.value);
 };
+
+const showDeleteAirlineConfirmModal = (airlineID) => {
+  selectedAirline.value = airlineID;
+  isShowConfirmModal.value = true;
+  confirmMode.value = "success";
+};
+
+const deleteAirline = () => {
+  console.log("Deleting Airline with ID:", selectedAirline.value);
+  const airlineID = selectedAirline.value;
+  airlineStore.deleteAirline(airlineID);
+  isShowConfirmModal.value = false;
+};
+
 </script>
 
 <template>
@@ -100,13 +118,36 @@ const handleSearch = (event) => {
             <h3>{{ airline.name }}</h3>
             <p>#{{ airline.code }}{{ airline.airlineID }}</p>
           </div>
+
           <div
             class="airline-edit-button"
             @click="editAirline(airline.airlineID)"
           >
             <font-awesome-icon icon="edit" />
           </div>
-        </div>
+
+          <div
+            class="airline-edit-button"
+            @click="showDeleteAirlineConfirmModal(airline.airlineID)"
+          >
+            <font-awesome-icon :icon="['fas', 'trash']" style="color: #ffffff;" />
+          </div>
+
+          <div
+            class="aircraft-navigation-button"
+            @click="
+              airline.airlineID && router.push({
+                name: 'management-aircraft',
+                params: { airlineID: Number(airline.airlineID) }
+              })
+            "
+          >
+            <img
+              src="/src/assets/aircraft_logo.png"
+              alt="View Aircraft"
+            />
+          </div>
+        </div>  
 
         <div class="card-section status-section" style="grid-area: status">
           <select
@@ -177,6 +218,19 @@ const handleSearch = (event) => {
     :formMode="selectedAirline ? 'edit' : 'add'"
     @close="closeModalAddAirline"
   />
+  <ModalConfirm
+      :isShowConfirmModal="isShowConfirmModal"
+      :confirmMode="confirmMode"
+      @confirmModal="deleteAirline"
+      @closeConfirmModal="isShowConfirmModal = false"
+    >
+      <template #header>Delete Airline</template>
+      <template #body>
+        <p>Are you sure you want to delete this airline?</p>
+      </template>
+      <template #footer-summit>Delete</template>
+      <template #footer-cancel>Cancel</template>
+    </ModalConfirm>
 </template>
 
 <style scoped>
@@ -260,6 +314,24 @@ const handleSearch = (event) => {
     cursor: pointer;
     color: white;
   }
+}
+
+.aircraft-navigation-button {
+  height: 30px;
+  width: 30px;
+  cursor: pointer;
+  border: 2px solid white;
+  border-radius: 20%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  margin-left: 72%;
+}
+
+.aircraft-navigation-button img {
+  height: 25px;
+  width: 25px;
 }
 
 .status-section {

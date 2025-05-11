@@ -27,7 +27,7 @@ const { isShowModalAddAirline, airlineID, formMode } = defineProps({
     default: false,
   },
   airlineID: {
-    type: String,
+    type: [String, Number],
     default: null,
   },
   formMode: {

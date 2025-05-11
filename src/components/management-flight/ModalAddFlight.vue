@@ -9,7 +9,7 @@ import {
   watchEffect,
 } from "vue";
 
-import { object, string, number } from "zod";
+import { z, object, string, number } from "zod";
 
 import ModalConfirm from "../ModalConfirm.vue";
 import { useAircraftStore } from "@/stores/aircraftStore";
@@ -70,46 +70,40 @@ const statusOptions = [
   { value: "canceled", label: "Canceled", class: "canceled" },
 ];
 
-const formSchema = object({
-  departure: object({
-    airport: string()
+const formSchema = z.object({
+  departure: z.object({
+    airport: z.string()
       .nonempty("Airport is required")
       .max(100, "Airport code must be less than 100 characters"),
-    time: string().nonempty("Time is required"),
-    date: string().nonempty("Date is required"),
+    time: z.string().nonempty("Time is required"),
+    date: z.string().nonempty("Date is required"),
   }),
-  destination: object({
-    airport: string()
+  destination: z.object({
+    airport: z.string()
       .nonempty("Airport is required")
       .max(100, "Airport code must be less than 100 characters"),
-    time: string().nonempty("Time is required"),
-    date: string().nonempty("Date is required"),
+    time: z.string().nonempty("Time is required"),
+    date: z.string().nonempty("Date is required"),
   }),
-  duration: object({
-    time: number().min(1, "Duration time must be greater than 0"), // Use .min() for validation
-    stop: number().min(0, "Stop count must be 0 or greater"), // Use .min() for validation
+  duration: z.object({
+    time: z.preprocess((val) => Number(val), z.number().min(1, "Duration time must be greater than 0")),
+    stop: z.preprocess((val) => Number(val), z.number().min(0, "Stop count must be 0 or greater")),
   }),
-  flightPrice: number().min(-1, "Duration time must be equal or greater than 0"),
-})
-  .refine((data) => data.departure.airport !== data.destination.airport, {
-    message: "Departure and destination airports cannot be the same.",
-    path: ["destination", "airport"],
-  })
-  .refine(
-    (data) => {
-      const departureDateTime = new Date(
-        `${data.departure.date}T${data.departure.time}`
-      );
-      const destinationDateTime = new Date(
-        `${data.destination.date}T${data.destination.time}`
-      );
-      return destinationDateTime > departureDateTime;
-    },
-    {
-      message: "Arrival date and time must be after departure.",
-      path: ["destination", "date"], // Highlight the destination date field
-    }
-  );
+  stopOvers: z.preprocess((val) => Array.isArray(val) ? val : [], z.array(z.string().min(1, "Each stop over must not be empty"))),
+  flightPrice: z.preprocess((val) => Number(val), z.number().min(0, "Price must be equal or greater than 0")),
+  aircraftID: z.number({ required_error: "Aircraft is required" }).refine(val => !isNaN(val), {
+    message: "Please select an aircraft",
+  }),
+  flightStatus: z.string().nonempty("Flight status is required"),
+}).superRefine((data, ctx) => {
+  if (data.duration.stop > 0 && data.stopOvers.length !== data.duration.stop) {
+    ctx.addIssue({
+      path: ['stopOvers'],
+      code: z.ZodIssueCode.custom,
+      message: `You must fill ${data.duration.stop} stopover(s).`,
+    });
+  }
+});
 
 // form data
 const form = ref({
@@ -197,8 +191,12 @@ const confirmText = computed(() => {
 });
 
 const confirmAddFlight = () => {
+  if (form.value.duration.stop > 0 && Array.isArray(form.value.stopOvers)) {
+    form.value.stopOvers = form.value.stopOvers.map(s => (s || "").trim()).filter(s => s !== "");
+  }
   const result = formSchema.safeParse(form.value);
   console.log("✅ VALIDATION RESULT", result);
+
   if (result.success) {
     confirmMode.value = "success";
     showConfirmAddFlight();
@@ -206,6 +204,7 @@ const confirmAddFlight = () => {
     console.error("❌ Validation failed:", result.error.flatten());
   }
 };
+
 
 const showConfirmAddFlight = () => {
   isShowConfirmModal.value = true;

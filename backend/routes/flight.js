@@ -12,12 +12,15 @@ function capitalize(str) {
 
 // ------------- Flight -------------
 
-// Get all Flights
+// Get all Flights with StopOvers
 router.get("/", async (req, res) => {
   try {
-    const [results] = await db.query("SELECT * FROM Flight");
+    const [flights] = await db.query("SELECT * FROM Flight");
 
-    const formattedResults = results.map((flight) => {
+    const flightsWithStops = await Promise.all(flights.map(async (flight) => {
+      const [stops] = await db.query("SELECT Location FROM StopOver WHERE FlightID = ?", [flight.FlightID]);
+      const stopLocations = stops.map(s => s.Location);
+
       const departureDateTime = new Date(flight.DepartureDateTime);
       const arrivalDateTime = new Date(flight.ArrivalDateTime);
 
@@ -34,19 +37,19 @@ router.get("/", async (req, res) => {
           date: arrivalDateTime.toISOString().split("T")[0],
           time: arrivalDateTime.toISOString().split("T")[1].substring(0, 5),
         },
-        stopOvers: flight.StopOver ? flight.StopOver.split(",").map(x => x.trim()) : [],
+        stopOvers: stopLocations,
         duration: {
           time: flight.Duration,
-          stop: flight.StopOver ? flight.StopOver.split(",").length : 0,
+          stop: stopLocations.length,
         },
         aircraftID: flight.AircraftID,
         flightStatus: flight.Status,
         flightPrice: flight.Price,
         isSeatAvailable: true,
       };
-    });
+    }));
 
-    res.json(formattedResults);
+    res.json(flightsWithStops);
   } catch (err) {
     console.error("Error fetching flights:", err);
     res.status(500).json({ error: "Failed to fetch flights" });
@@ -66,6 +69,9 @@ router.get("/:id", async (req, res) => {
     const departureDateTime = new Date(flight.DepartureDateTime);
     const arrivalDateTime = new Date(flight.ArrivalDateTime);
 
+    const [stops] = await db.query("SELECT Location FROM StopOver WHERE FlightID = ?", [flight.FlightID]);
+    const stopLocations = stops.map(s => s.Location);
+
     res.json({
       flightID: flight.FlightID,
       airlineID: flight.AirlineID,
@@ -79,10 +85,10 @@ router.get("/:id", async (req, res) => {
         date: arrivalDateTime.toISOString().split("T")[0],
         time: arrivalDateTime.toISOString().split("T")[1].substring(0, 5),
       },
-      stopOvers: flight.StopOver ? flight.StopOver.split(",").map(x => x.trim()) : [],
+      stopOvers: stopLocations,
       duration: {
         time: flight.Duration,
-        stop: flight.StopOver ? flight.StopOver.split(",").length : 0,
+        stop: stopLocations.length,
       },
       aircraftID: flight.AircraftID,
       flightStatus: flight.Status,
@@ -99,18 +105,11 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
   try {
     const {
-      airlineID,
-      departure,
-      destination,
-      departureDate,
-      departureTime,
-      arrivalDate,
-      arrivalTime,
-      stopOvers,
-      duration,
-      aircraftID,
-      status,
-      price,
+      airlineID, departure, destination,
+      departureDate, departureTime,
+      arrivalDate, arrivalTime,
+      stopOvers, duration,
+      aircraftID, status, price,
     } = req.body;
 
     const departureDateTime = combineDateTime(departureDate, departureTime);
@@ -120,28 +119,32 @@ router.post("/", async (req, res) => {
       return res.status(400).send("Departure and destination must be different.");
     }
 
-    const query = `
+    const insertFlightSQL = `
       INSERT INTO Flight 
-      (AirlineID, Departure, Destination, DepartureDateTime, ArrivalDateTime, StopOver, Duration, AircraftID, Status, Price)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (AirlineID, Departure, Destination, DepartureDateTime, ArrivalDateTime, Duration, AircraftID, Status, Price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const values = [
-      airlineID,
-      departure,
-      destination,
-      departureDateTime,
-      arrivalDateTime,
-      stopOvers.join(", "),
-      duration,
-      aircraftID,
-      capitalize(status),
-      price   
+      airlineID, departure, destination,
+      departureDateTime, arrivalDateTime,
+      duration, aircraftID, capitalize(status), price
     ];
 
-    const [result] = await db.query(query, values);
+    const [result] = await db.query(insertFlightSQL, values);
+    const flightID = result.insertId;
 
-    res.status(201).json({ message: "Flight created successfully", flightID: result.insertId });
+    // Insert StopOvers
+    const validStops = (Array.isArray(stopOvers) ? stopOvers : []).filter(
+      s => typeof s === 'string' && s.trim() !== ''
+    );
+
+    if (validStops.length > 0) {
+      const stopValues = validStops.map(location => [flightID, location]);
+      await db.query("INSERT INTO StopOver (FlightID, Location) VALUES ?", [stopValues]);
+    }
+
+    res.status(201).json({ message: "Flight created successfully", flightID });
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error");
@@ -152,19 +155,14 @@ router.post("/", async (req, res) => {
 router.put("/:id", async (req, res) => {
   try {
     const {
-      departure,
-      destination,
-      departureDate,
-      departureTime,
-      arrivalDate,
-      arrivalTime,
-      stopOvers,
-      duration,
-      aircraftID,
-      status,
-      price
+      departure, destination,
+      departureDate, departureTime,
+      arrivalDate, arrivalTime,
+      stopOvers, duration,
+      aircraftID, status, price,
     } = req.body;
 
+    const flightID = req.params.id;
     const departureDateTime = combineDateTime(departureDate, departureTime);
     const arrivalDateTime = combineDateTime(arrivalDate, arrivalTime);
 
@@ -172,37 +170,26 @@ router.put("/:id", async (req, res) => {
       return res.status(400).send("Departure and destination must be different.");
     }
 
-    const query = `
+    const updateSQL = `
       UPDATE Flight SET 
-        Departure = ?, 
-        Destination = ?, 
-        DepartureDateTime = ?, 
-        ArrivalDateTime = ?, 
-        StopOver = ?, 
-        Duration = ?, 
-        AircraftID = ?, 
-        Status = ?,
-        Price = ?
+        Departure = ?, Destination = ?, DepartureDateTime = ?, ArrivalDateTime = ?, 
+        Duration = ?, AircraftID = ?, Status = ?, Price = ?
       WHERE FlightID = ?
     `;
 
-    const values = [
-      departure,
-      destination,
-      departureDateTime,
-      arrivalDateTime,
-      stopOvers.join(", "),
-      duration,
-      aircraftID,
-      capitalize(status),
-      price,
-      req.params.id,
-    ];
+    await db.query(updateSQL, [
+      departure, destination, departureDateTime, arrivalDateTime,
+      duration, aircraftID, capitalize(status), price, flightID
+    ]);
+    
+    const validStops = (Array.isArray(stopOvers) ? stopOvers : []).filter(
+      s => typeof s === 'string' && s.trim() !== ''
+    );
 
-    const [result] = await db.query(query, values);
-
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: "Flight not found" });
+    if (validStops.length > 0) {
+      await db.query("DELETE FROM StopOver WHERE FlightID = ?", [flightID]);
+      const stopValues = validStops.map(location => [flightID, location]);
+      await db.query("INSERT INTO StopOver (FlightID, Location) VALUES ?", [stopValues]);
     }
 
     res.json({ message: "Flight updated successfully" });
@@ -229,14 +216,17 @@ router.delete("/:id", async (req, res) => {
         .json({ error: "Cannot delete flight with any existing reservations." });
     }
 
-    // If there is no reservation, you can delete it.
+    // Delete StopOver
+    await db.query("DELETE FROM StopOver WHERE FlightID = ?", [flightID]);
+
+    // Delete Flight
     const [result] = await db.query("DELETE FROM Flight WHERE FlightID = ?", [flightID]);
 
     if (result.affectedRows === 0) {
       return res.status(404).send("Flight not found");
     }
 
-    res.json({ message: "Flight deleted successfully" });
+    res.json({ message: "Flight and its StopOvers deleted successfully" });
   } catch (err) {
     console.error(err);
     res.status(500).send("Error deleting flight");

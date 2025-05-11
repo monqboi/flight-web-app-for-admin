@@ -1,38 +1,32 @@
 <script setup>
   import ManagementOverview from "@/components/ManagementOverview.vue";
-  import FlightPagination from "@/components/management-flight/FlightPagination.vue";
-  import ModalAddFlight from "@/components/management-flight/ModalAddFlight.vue";
+  import AircraftPagination from "@/components/management-flight/AircraftPagination.vue";
+  import ModalAddAircraft from "@/components/management-flight/ModalAircraft.vue";
   import ModalConfirm from "@/components/ModalConfirm.vue";
-  import { formatDate, mapFlightStatus } from "@/utils/flightUtils";
-  import { getFlightDurationHours, minutesToHours } from "@/utils/timeFunction";
   import { ref, computed, onMounted, watch } from "vue";
-  import { useFlightStore } from "@/stores/flightStore";
   import { useAircraftStore } from "@/stores/aircraftStore";
+  import { useAirlineStore } from "@/stores/airlineStore";
   import { useRouter, useRoute } from "vue-router";
   import Dropdown from "@/components/Dropdown.vue";
-  import ModalAircraft from "@/components/management-flight/ModalAircraft.vue";
   import {
     getAircraftModelPart,
     getAircraftStatusClass,
   } from "@/utils/flightUtils";
 
   const tableHeaders = [
-    { label: "SeatAvailable" },
-    { label: "Departure" },
-    { label: "" },
-    { label: "Destination" },
-    { label: "Date" },
-    { label: "Aircraft" },
+    { label: "AircraftID" },
+    { label: "Model" },
+    { label: "Registration" },
+    { label: "Capacity" },
     { label: "Status" },
     { label: "Action" },
   ];
 
+  const emit = defineEmits(["close", "addAircraft", "editAircraft"]);
+
   const statusOptions = [
-    { label: "All", value: "all", class: "all" },
-    { label: "Canceled", value: "Canceled", class: "canceled" },
-    { label: "Completed", value: "Completed", class: "completed" },
-    { label: "Scheduled", value: "Scheduled", class: "scheduled" },
-    { label: "Delayed", value: "Delayed", class: "delayed" },
+    { label: "Available", value: "Available", class: "available" },
+    { label: "Not Available", value: "Not Available", class: "not-available" }
   ];
 
   function getStatusClass(status) {
@@ -45,77 +39,76 @@
   }
 
   const route = useRoute();
-  const flightStore = useFlightStore();
+  const airlineID = ref(Number(route.params.airlineID));
   const aircraftStore = useAircraftStore();
-  const airlineID = Number(route.params.airlineID);
+  const airlineStore = useAirlineStore();
+  const airline = computed(() => airlineStore.getAirlineByID(airlineID.value));
   const aircraftsForThisAirline = computed(() =>
-    aircraftStore.getAircraftsByAirlineID(Number(airlineID))
+    aircraftStore.getAircraftsByAirlineID(airlineID.value)
   );
   const router = useRouter();
   const isShowModal = ref(false);
   const isShowAircraft = ref(false);
   const isShowConfirmModal = ref(false);
   const confirmMode = ref("");  
-
+  const selectedAircraftID = ref(null);
+  const formMode = ref("add");
   const status = ref("");
-  const formMode = ref("");
-  const selectedAircraftID = ref("");
-  const selectedFlightID = ref(0);
 
   const sortOrder = ref("desc");
-  const filteredFlights = computed(() => {
-    const flights = flightStore.getFlightsByAirlineId(airlineID).slice();
-    return sortOrder.value === "desc"
-      ? flights.sort((a, b) => b.flightID - a.flightID)
-      : flights.sort((a, b) => a.flightID - b.flightID);
-  });
+  const filteredAircrafts = computed(() => {
+    const aircrafts = aircraftStore.getAircraftsByAirlineID(airlineID.value).slice();
 
+    const filtered = status.value
+      ? aircrafts.filter(a => a.aircraftStatus === status.value)
+      : aircrafts;
+
+    return sortOrder.value === "desc"
+      ? filtered.sort((a, b) => b.aircraftID - a.aircraftID)
+      : filtered.sort((a, b) => a.aircraftID - b.aircraftID);
+  });
   onMounted(async () => {
-    console.log("onMounted ManagementFlight.vue");
-    await flightStore.loadFlights();
+    console.log("onMounted ManagementAircraft.vue");
+    await airlineStore.loadAirlines();
     await aircraftStore.loadAircrafts();
     console.log("All aircrafts loaded:", aircraftStore.aircraft);
-    console.log("All flights from store:", flightStore.flights);
-    console.log("Filtered flights by airline", airlineID, ":", filteredFlights.value);
+    console.log("Filtered aircrafts by airline", airlineID.value, ":", filteredAircrafts.value);
   });
 
-  watch(filteredFlights, (newFlights) => {
-    console.log("filteredFlights changed:", newFlights); 
-    paginatedFlights.value = newFlights;
+  watch(filteredAircrafts, (newAircrafts) => {
+    console.log("filteredAircrafts changed:", newAircrafts); 
+    paginatedAircrafts.value = newAircrafts;
   });
 
   // ส่วนของ pageination เเละ sort data
-  const paginatedFlights = ref([]);
+  const paginatedAircrafts = ref([]);
 
   // เป็นการส่งค่าจาก child component ไปยัง parent component
   // เพื่อให้ parent component สามารถอัพเดทข้อมูลได้ จากการกดเปลี่ยนหน้าเเต่ละครั้ง ข้อมูลจะถูกส่งไปที่ parent component
   // ex. กด next page จะส่งข้อมูลเที่ยวบินที่อยู่ในหน้าที่ 2 ไปที่ parent component
-  const updatePaginatedFlights = (flights) => {
-    paginatedFlights.value = flights;
+  const updatePaginatedAircrafts = (aircrafts) => {
+    paginatedAircrafts.value = aircrafts;
   };
 
-  const addFlight = (newFlight) => {
-  const cleanStops = (newFlight.stopOvers || []).filter(s => s && s.trim() !== "");
-  flightStore.addFlight({
-    ...newFlight,
-    stopOvers: cleanStops,
+  const addAircraft = (newAircraft) => {
+  const cleanStops = (newAircraft.stopOvers || []).filter(s => s && s.trim() !== "");
+  aircraftStore.addAircraft({
+    ...newAircraft,
   });
   isShowModal.value = false;
   };
 
 
-  const editFlight = (flightID, updatedFlight) => {
-  const cleanStops = (updatedFlight.stopOvers || []).filter(s => s && s.trim() !== "");
-  flightStore.updateFlight(flightID, {
-    ...updatedFlight,
-    stopOvers: cleanStops,
+  const editAircraft = (aircraftID, updatedAircraft) => {
+  aircraftStore.updateAircraft(aircraftID, {
+    ...updatedAircraft,
   });
   isShowModal.value = false;
   };
 
-  const showModalAddFlight = () => {
+  const showModalAddAircraft = () => {
+    formMode.value = "add";         
     isShowModal.value = true;
-    formMode.value = "add";
   };
 
   const showModalInfoAircraft = (aircraftID) => {
@@ -125,38 +118,33 @@
 
   const handleSearch = (event) => {
   const keyword = event.target.value.toLowerCase();
-  paginatedFlights.value = filteredFlights.value.filter((flight) => {
+  paginatedAircrafts.value = filteredAircrafts.value.filter((aircraft) => {
     return (
-      flight.departure.airport.toLowerCase().includes(keyword) ||
-      flight.destination.airport.toLowerCase().includes(keyword) ||
-      flight.departure.date.toLowerCase().includes(keyword) ||
-      flight.destination.date?.toLowerCase().includes(keyword)
+      aircraft.model.toLowerCase().includes(keyword) ||
+      aircraft.registrationNumber.toLowerCase().includes(keyword)
     );
   });
 };
 
-  const showEditFlightModal = (flightID) => {
-    selectedFlightID.value = flightID;
-    formMode.value = "edit";
+  const showEditAircraftModal = (aircraftID) => {
+    formMode.value = "edit";        
+    selectedAircraftID.value = aircraftID;
     isShowModal.value = true;
   };
 
-  const showDeleteFlightConfirmModal = (flightID) => {
-    selectedFlightID.value = flightID;
+  const showDeleteAircraftConfirmModal = (aircraftID) => {
+    selectedAircraftID.value = aircraftID;
     isShowConfirmModal.value = true;
     confirmMode.value = "success";
   };
 
-  const deleteFlight = () => {
-    console.log("Deleting flight with ID:", selectedFlightID.value);
-    const flightID = selectedFlightID.value;
-    flightStore.deleteFlight(flightID);
+  const deleteAircraft = () => {
+    console.log("Deleting Aircraft with ID:", selectedAircraftID.value);
+    const aircraftID = selectedAircraftID.value;
+    aircraftStore.deleteAircraft(aircraftID);
     isShowConfirmModal.value = false;
   };
 
-  watch(status, (newStatus) => {
-    flightStore.setSelectedStatus(newStatus);
-  });
   </script>
 
   <template>
@@ -164,8 +152,8 @@
       <!-- ฝั่งซ้ายของ header -->
       <template #header-left>
         <div class="section-header">
-          <h2>All Bookings</h2>
-          <p>Overview of Recent Reservations</p>
+          <h2>Aircraft Management</h2>
+          <p>Aircraft of {{ airline?.name || "Unknown Airline" }}</p>
         </div>
       </template>
 
@@ -178,7 +166,7 @@
             </div>
             <input
               type="text"
-              placeholder="Search Flight"
+              placeholder="Search Aircraft"
               class="search-input"
               @input="handleSearch"
             />
@@ -199,7 +187,7 @@
             </template>
           </Dropdown>
           <div class="status-selector">
-            <button class="status-button" @click="showModalAddFlight">
+            <button class="status-button" @click="showModalAddAircraft">
               Add +
             </button>
           </div>
@@ -213,156 +201,43 @@
               class="header-item"
               v-for="(header, index) in tableHeaders"
               :key="index"
-              :style="
-                header.label === 'SeatAvailable'
-                  ? 'display: flex; justify-content: center;'
-                  : ''
-              "
             >
               {{ header.label }}
             </div>
           </div>
-          <div v-if="paginatedFlights.length > 0">
+          <div v-if="paginatedAircrafts.length > 0">
             <div
               class="flight-row"
-              v-for="(flight, index) in paginatedFlights"
+              v-for="(aircraft, index) in paginatedAircrafts"
               :key="index"
             >
-              <div class="flight-cell seat-cell">
-                <div
-                  class="seat-icon"
-                  @click="
-                    router.push({
-                      name: 'management-seat',
-                      params: {
-                        airlineID: airlineID,
-                        flightID: flight.flightID,
-                      },
-                    })
-                  "
-                >
-                  <img
-                    v-if="flight.isSeatAvailable === true"
-                    src="/management-pic/management-flight/available-seat.png"
-                    alt="Available Seat"
-                  />
-                  <img
-                    v-else
-                    src="/management-pic/management-flight/not-available-seat.png"
-                    alt="Not available Seat"
-                  />
-                </div>
-              </div>
-
-              <div
-                class="flight-cell departure-cell"
-                @click="
-                  router.push({
-                    name: 'PassengerManagement',
-                    params: {
-                      airlineID: airlineID,
-                      flightID: flight.flightID,
-                    },
-                  })
-                "
-              >
-                <div class="flight-info">
-                  <div class="flight-icon">
-                    <img src="/dashboard-pic/plane-booking-up.png" alt="Plane" />
-                  </div>
-                  <div class="flight-details">
-                    <div class="flight-code">
-                      {{ flight.departure.airport }}
-                    </div>
-                    <div class="flight-time">
-                      {{ flight.departure.time }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                class="flight-cell route-cell"
-                @click="
-                  router.push({
-                    name: 'PassengerManagement',
-                    params: {
-                      airlineID: airlineID,
-                      flightID: flight.flightID,
-                    },
-                  })
-                "
-              >
-                <div class="flight-line">
-                  <p>{{ getFlightDurationHours(flight) }} hrs</p>
-                  <div class="line">
-                    <img
-                      src="/dashboard-pic/icons/plane-icon.png"
-                      
-                      :class="{
-                        animate: flight.flightStatus === 'Scheduled' || flight.flightStatus === 'Delayed',
-                        center: flight.flightStatus !== 'Scheduled' && flight.flightStatus !== 'Delayed',
-                      }"
-                      alt="Plane Icon"
-                    />
-                  </div>
-                  <p>{{ flight.duration.stop }} stop</p>
-                  <div v-if="flight.stopOvers?.length" class="stopover-names">
-                    <small>{{ flight.stopOvers.join(" → ") }} ({{ minutesToHours(flight.duration.time) }})</small>
-                  </div>
-                </div>
-              </div>
-
-              <div
-                class="flight-cell destination-cell"
-                @click="
-                  router.push({
-                    name: 'PassengerManagement',
-                    params: {
-                      flightID: flight.flightID,
-                      airlineID: airlineID,
-                    },
-                  })
-                "
-              >
-                <div class="flight-info">
-                  <div class="flight-icon">
-                    <img src="/dashboard-pic/plane-booking-down.png" alt="Plane" />
-                  </div>
-                  <div class="flight-details">
-                    <div class="flight-code">
-                      {{ flight.destination.airport }}
-                    </div>
-                    <div class="flight-time">
-                      {{ flight.destination.time }}
-                    </div>
-                  </div>
-                </div>
+              
+              <div class="flight-cell date-cell">
+                #{{ aircraft.aircraftID }}
               </div>
 
               <div class="flight-cell date-cell">
-                {{ formatDate(flight.departure.date) }}
+                {{ aircraft.model }}
               </div>
 
-              <div
-                class="flight-cell aircraft-cell"
-                @click="showModalInfoAircraft(flight.aircraftID)"
-              >
-              <p :class="getAircraftStatusClass(flight.aircraftID)">
-                {{ aircraftStore.getAircraftByID(flight.aircraftID)?.model || "Unknown Model" }}
-              </p>
+              <div class="flight-cell date-cell">
+                {{ aircraft.registrationNumber }}
+              </div>
+
+              <div class="flight-cell date-cell">
+                {{ aircraft.capacity }}
               </div>
 
               <div class="flight-cell status-cell">
-                <span :class="['status-badge', `status-${flight.flightStatus.toLowerCase()}`]">
-                  {{ capitalize(flight.flightStatus) }}
+                <span :class="['status-badge', `status-${aircraft.aircraftStatus.toLowerCase().replace(/\s+/g, '-')}`]">
+                  {{ aircraft.aircraftStatus }}
                 </span>
               </div>
 
               <div class="flight-cell action-cell">
                 <button
                   class="edit-button"
-                  @click="showEditFlightModal(flight.flightID)"
+                  @click="showEditAircraftModal(aircraft.aircraftID)"
                 >
                   <svg
                     width="20"
@@ -384,7 +259,7 @@
                 </button>
                 <button
                   class="delete-button"
-                  @click="showDeleteFlightConfirmModal(flight.flightID)"
+                  @click="showDeleteAircraftConfirmModal(aircraft.aircraftID)"
                 >
                   <svg
                     width="17"
@@ -412,45 +287,37 @@
             </div>
           </div>
           <div v-else style="text-align: center; padding: 3rem 1rem; font-size: 1.4rem; color: #888;">
-            <strong>No Flights for this Airline.</strong>
+            <strong>No Aircrafts for this Airline.</strong>
           </div>
         </div>
-        <!-- :flights="filteredFlights" -->
-        <FlightPagination
-          :flights="filteredFlights"
-          @update:paginatedData="updatePaginatedFlights"
+        <!-- :aircrafts="filteredAircrafts" -->
+        <AircraftPagination
+          :aircrafts="filteredAircrafts"
+          @update:paginatedData="updatePaginatedAircrafts"
         />
-        <!-- <pre>All flights: {{ flightStore.flights }}</pre> -->
-        <!-- <pre>Filtered: {{ filteredFlights }}</pre> -->
-        <!-- <pre>Paginated: {{ paginatedFlights }}</pre> -->
+        <!-- <pre>All aircrafts: {{ aircraftStore.aircrafts }}</pre> -->
+        <!-- <pre>Filtered: {{ filteredAircrafts }}</pre> -->
+        <!-- <pre>Paginated: {{ paginatedAircrafts }}</pre> -->
       </template>
     </ManagementOverview>
-    <ModalAircraft
-      :showAircraft="isShowAircraft"
-      :aircraftID="selectedAircraftID"
-      :airlineID="airlineID"
-      formMode="edit"
-      @close="isShowAircraft = false"
-    ></ModalAircraft>
-
-    <ModalAddFlight
+    <ModalAddAircraft
       :formMode="formMode"
       :showModal="isShowModal"
-      :selectedFlightID="selectedFlightID"
+      :selectedAircraftID="selectedAircraftID"
       @close="isShowModal = false"
-      @addFlight="addFlight"
-      @editFlight="editFlight"
-    ></ModalAddFlight>
+      @addAircraft="addAircraft"
+      @editAircraft="editAircraft"
+    ></ModalAddAircraft>
 
     <ModalConfirm
       :isShowConfirmModal="isShowConfirmModal"
       :confirmMode="confirmMode"
-      @confirmModal="deleteFlight"
+      @confirmModal="deleteAircraft"
       @closeConfirmModal="isShowConfirmModal = false"
     >
-      <template #header>Delete Flight</template>
+      <template #header>Delete Aircraft</template>
       <template #body>
-        <p>Are you sure you want to delete this flight?</p>
+        <p>Are you sure you want to delete this aircraft?</p>
       </template>
       <template #footer-summit>Delete</template>
       <template #footer-cancel>Cancel</template>
@@ -578,7 +445,7 @@
 /* Table Header Styling */
 .flight-table-header {
   display: grid;
-  grid-template-columns: 1fr 120px 300px 120px 1fr 1fr 1fr 0.5fr;
+  grid-template-columns:  0.6fr 1.4fr 1.2fr 1fr 1fr .6fr;
   padding: 16px 0;
   border-bottom: 2px solid var(--c-soft-blue);
   color: var(--vt-c-gray);
@@ -621,9 +488,9 @@
 /* Flight Row Styling */
 .flight-row {
   display: grid;
-  grid-template-columns: 1fr 120px 300px 120px 1fr 1fr 1fr 0.5fr;
+  grid-template-columns: 0.6fr 1.4fr 1.2fr 1fr 1fr .7fr;
   border-bottom: 3px dashed var(--c-soft-blue);
-  padding: 16px 0;
+  padding: 20px 16px;
   align-items: center;
   min-height: 80px;
   position: relative;
@@ -727,27 +594,6 @@
   top: 50%;
   transform: translateY(-50%);
   color: var(--c-soft-blue);
-}
-
-/* not pending || delayed */
-.line img.center {
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* pending || delayed */
-.line img.animate {
-  left: 0;
-  animation: plane-move 4s infinite linear;
-}
-
-@keyframes plane-move {
-  0% {
-    transform: translateY(-50%) translateX(0);
-  }
-  100% {
-    transform: translateY(-50%) translateX(180px);
-  }
 }
 
 .line::before,
@@ -882,24 +728,14 @@
   font-weight: 600;
 }
 
-.status-pending {
-  background-color: var(--c-light-orange);
-  color: var(--c-orange);
-}
-
-.status-completed {
-  background-color: var(--c-soft-blue);
-  color: var(--c-navy-light);
-}
-
-.status-canceled {
+.status-available {
   background-color: var(--c-dark-navy);
   color: var(--c-soft-blue);
 }
 
-.status-delayed {
-  background-color: var(--c-soft-orange);
-  color: var(--c-light-orange);
+.status-not-available {
+  background-color: var(--c-soft-blue);
+  color: var(--c-navy);
 }
 
 /* Action Button Styling */

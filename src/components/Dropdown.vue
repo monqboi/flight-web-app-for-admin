@@ -234,6 +234,10 @@ const selectedOption = computed(() => {
   background-color: var(--c-light-orange);
   color: var(--c-orange);
 }
+:deep(.badge.scheduled) {
+  background-color: var(--c-light-orange);
+  color: #8ae3a3;
+}
 :deep(.badge.completed) {
   background-color: var(--c-soft-blue);
   color: var(--c-navy-light);

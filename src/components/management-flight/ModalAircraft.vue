@@ -1,41 +1,32 @@
 <script setup>
-import { ref, defineProps, defineEmits, computed, watch } from "vue";
+import { ref, defineProps, defineEmits, computed, watch, onMounted } from "vue";
 import { useAircraftStore } from "@/stores/aircraftStore";
 import { useAirlineStore } from "@/stores/airlineStore";
-import { onMounted } from "vue";
 import { object, string, number } from "zod";
 
 import ModalConfirm from "../ModalConfirm.vue";
 import Dropdown from "../Dropdown.vue";
 
 const props = defineProps({
-  showAircraft: Boolean,
-  aircraftID: [Number, String],
+  showModal: Boolean,
+  selectedAircraftID: Number,
+  formMode: String,
   airlineID: Number,
-  formMode: String
 });
 
-const emit = defineEmits(["close", "aircraftAdded"]);
+const emit = defineEmits(["close", "addAircraft", "editAircraft"]);
 const aircraftStore = useAircraftStore();
 const airlineStore = useAirlineStore();
 const showConfirmModal = ref(false);
 const confirmMode = ref("");
 const aircrafts = ref([]);
 const aircraft = ref(null);
+const showAircraft = computed(() => props.showModal);
 
 const statusOptions = [
   { label: "Available", value: "Available", class: "available" },
   { label: "Not Available", value: "Not Available", class: "not-available" },
 ];
-
-onMounted(() => {
-  if (props.airlineID && airlineStore.airlines.length > 0) {
-    const airline = airlineStore.getAirlineByID(props.airlineID);
-    if (airline) {
-      form.value.airline = airline.name;
-    }
-  }
-});
 
 const formSchema = object({
   capacity: number()
@@ -61,16 +52,19 @@ const form = ref({
   airlineID: props.airlineID,
 });
 
-const loaded = ref(false)
+const airlineName = computed(() => {
+  const found = airlineStore.getAirlineByID(props.airlineID);
+  return found?.name || found?.Name || "Unknown Airline";
+});
 
 watch(
-  () => props.aircraftID,
+  () => props.selectedAircraftID,
   async (newID) => {
     if (!newID) return;
 
     if (aircraftStore.aircraft.length === 0) {
       await aircraftStore.loadAircrafts();
-      aircrafts.value = aircraftStore.getAircraftsByAirlineID(props.airlineID); 
+      aircrafts.value = aircraftStore.getAircraftsByAirlineID(props.airlineID);
     }
 
     if (airlineStore.airlines.length === 0) {
@@ -78,21 +72,21 @@ watch(
     }
 
     const aircraft = aircraftStore.getAircraftByID(newID);
-    const airline = airlineStore.getAirlineByID(aircraft?.airlineID);
-
-    console.log("aircraft:", aircraft);
-    console.log("airline:", airline);
-
     if (aircraft) {
       form.value = {
         ...form.value,
         ...aircraft,
-        airline: airline?.name || "",
       };
     }
   },
   { immediate: true }
 );
+
+onMounted(async () => {
+  if (airlineStore.airlines.length === 0) {
+    await airlineStore.loadAirlines();
+  }
+});
 
 const isFormValid = computed(() => {
   const result = formSchema.safeParse(form.value);
@@ -102,30 +96,21 @@ const isFormValid = computed(() => {
 const handleClose = () => {
   confirmMode.value = "discard";
   showConfirmModal.value = true;
-  const aircraft = aircraftStore.getAircraftByID(props.aircraftID);
-
-  if (aircraft) {
-    form.value = {
-      ...form.value,
-      ...aircraft,
-    };
-  }
 };
 
 const confirmAddAircraft = () => {
   confirmMode.value = "success";
   showConfirmModal.value = true;
-
-  // aircraftStore.updateAircraft(props.aircraftID, form.value);
 };
 
 const addAircraft = async () => {
   try {
     if (props.formMode === "add") {
       await aircraftStore.addAircraft({ ...form.value });
-      emit("aircraftAdded", form.value);
+      emit("addAircraft", form.value);
     } else if (props.formMode === "edit") {
-      await aircraftStore.updateAircraft(props.aircraftID, form.value);
+      await aircraftStore.updateAircraft(props.selectedAircraftID, form.value);
+      emit("editAircraft", form.value);
     }
     showConfirmModal.value = false;
     emit("close");
@@ -142,12 +127,12 @@ const closeModal = () => {
 const confirmText = computed(() => {
   if (props.formMode === "add") {
     return confirmMode.value === "success"
-      ? "Are you sure you want to add this flight?"
-      : "Are you sure you want to discard this flight?";
+      ? "Are you sure you want to add this aircraft?"
+      : "Are you sure you want to discard this aircraft?";
   } else if (props.formMode === "edit") {
     return confirmMode.value === "success"
-      ? "Are you sure you want to edit this flight?"
-      : "Are you sure you want to discard this flight?";
+      ? "Are you sure you want to edit this aircraft?"
+      : "Are you sure you want to discard this aircraft?";
   }
   return "";
 });
@@ -235,48 +220,32 @@ const confirmText = computed(() => {
                   align-items: center;
                 "
               >
-                <label>Airline</label>
-                <label>Capacity</label>
               </div>
-
-              <div
-                class="form-row inputs"
-                style="
-                  grid-template-columns: 1fr 1fr;
-                  gap: 20px;
-                  align-items: center;
-                "
-              >
-              <input
-                type="text"
-                :value="airlineStore.getAirlineByID(props.airlineID)?.name || 'Unknown Airline'"
-                disabled
-              />
-                <input type="number" v-model="form.capacity" min="0" />
-              </div>
-
+        
               <div
                 class="form-row"
                 style="
-                  grid-template-columns: 2fr 1fr;
+                  grid-template-columns: 1fr 1fr .7fr;
                   gap: 20px;
                   align-items: center;
                 "
               >
                 <label>Model</label>
                 <label>RegistrationNumber</label>
+                <label>Capacity</label>
               </div>
 
               <div
                 class="form-row inputs"
                 style="
-                  grid-template-columns: 2fr 1fr;
+                  grid-template-columns: 1fr 1fr .7fr;
                   gap: 20px;
                   align-items: center;
                 "
               >
                 <input type="text" v-model="form.model" />
                 <input type="text" v-model="form.registrationNumber" />
+                <input type="number" v-model="form.capacity" min="0" />
               </div>
             </div>
           </div>

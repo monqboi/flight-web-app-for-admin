@@ -42,7 +42,7 @@ export const useFlightStore = defineStore("flight", {
     
           return {
             ...flight,
-            stopOver: parsedStops, 
+            stopOvers: parsedStops,  
           };
         });
       } catch (error) {

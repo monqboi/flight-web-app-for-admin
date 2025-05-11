@@ -6,12 +6,16 @@ const router = express.Router();
 // ---------- 1. Stats Summary Cards ----------
 router.get('/stats', async (req, res) => {
   try {
-    const [[{ countUsers }]] = await db.query('SELECT COUNT(*) AS countUsers FROM User');
-    const [[{ countFlights }]] = await db.query('SELECT COUNT(*) AS countFlights FROM Flight');
-    const [[{ totalRevenue }]] = await db.query(`
+    const [usersRes] = await db.query('SELECT COUNT(*) AS countUsers FROM User');
+    const [flightsRes] = await db.query('SELECT COUNT(*) AS countFlights FROM Flight');
+    const [revenueRes] = await db.query(`
       SELECT IFNULL(SUM(Amount), 0) AS totalRevenue
       FROM Payment WHERE Status = 'Successful'
     `);
+
+    const countUsers = usersRes?.[0]?.countUsers ?? 0;
+    const countFlights = flightsRes?.[0]?.countFlights ?? 0;
+    const totalRevenue = revenueRes?.[0]?.totalRevenue ?? 0;
 
     res.json([
       { title: 'Users', value: countUsers },
@@ -20,6 +24,7 @@ router.get('/stats', async (req, res) => {
       { title: 'Global', value: 'Online' } // mock
     ]);
   } catch (err) {
+    console.error("❌ Failed to load /stats:", err);
     res.status(500).json({ error: 'Failed to load stats' });
   }
 });
@@ -34,30 +39,25 @@ router.get('/bookings', async (req, res) => {
         f.Destination,
         f.DepartureDateTime,
         f.ArrivalDateTime,
-        f.StopOver,
         f.Duration,
         a.AirlineID,
         a.Name AS Airline,
-        (
-          SELECT COUNT(*) 
-          FROM Passenger p
-          JOIN Reservation r2 ON p.ReservationID = r2.ReservationID
-          JOIN Flight f2 ON r2.FlightID = f2.FlightID
-          WHERE f2.AirlineID = a.AirlineID
-        ) AS passengerCount
+        COUNT(p.PassengerID) AS passengerCount
       FROM Reservation r
       JOIN Flight f ON r.FlightID = f.FlightID
       JOIN Airline a ON f.AirlineID = a.AirlineID
-      GROUP BY r.FlightID
-      ORDER BY MAX(r.BookingDate) DESC
+      LEFT JOIN Passenger p ON p.ReservationID = r.ReservationID
+      GROUP BY r.ReservationID
+      ORDER BY r.BookingDate DESC
       LIMIT 2
     `);
+
+    console.log("✅ Bookings query success:", results.length, "results");
 
     const bookings = results.map(r => {
       const departure = new Date(r.DepartureDateTime);
       const arrival = new Date(r.ArrivalDateTime);
       const durationMinutes = Math.round((arrival - departure) / 60000);
-      const stopOvers = (r.StopOver || '').split(',').map(s => s.trim()).filter(Boolean);
 
       return {
         departure: {
@@ -71,17 +71,15 @@ router.get('/bookings', async (req, res) => {
         flight: {
           departure: {
             date: departure.toISOString().split("T")[0],
-            time: departure.toTimeString().slice(0,5)
+            time: departure.toTimeString().slice(0, 5)
           },
           destination: {
             date: arrival.toISOString().split("T")[0],
-            time: arrival.toTimeString().slice(0,5)
+            time: arrival.toTimeString().slice(0, 5)
           },
           duration: {
             time: r.Duration || durationMinutes,
-            stop: stopOvers.length
           },
-          stopOvers: stopOvers
         },
         airline: r.Airline,
         date: departure.toLocaleDateString(),
@@ -91,23 +89,23 @@ router.get('/bookings', async (req, res) => {
 
     res.json(bookings);
   } catch (err) {
-    console.error("Error in /bookings:", err);
+    console.error("❌ Error in /bookings route:", err);
     res.status(500).json({ error: 'Failed to load bookings' });
   }
 });
 
-// ---------- 3. Reservation Summary (Bar Chart) ----------
+// ---------- 3. Reservation Summary ----------
 router.get('/reservation-chart', async (req, res) => {
   try {
     const [results] = await db.query(`
-        SELECT DATE(BookingDate) as date, COUNT(*) as count
-        FROM Reservation
-        GROUP BY DATE(BookingDate)
-        ORDER BY date DESC
-        LIMIT 1
+      SELECT DATE(BookingDate) as date, COUNT(*) as count
+      FROM Reservation
+      GROUP BY DATE(BookingDate)
+      ORDER BY date DESC
+      LIMIT 7
     `);
 
-    const data = results.reverse(); // chronological order
+    const data = results.reverse(); // to chronological
     res.json({
       labels: data.map(r => r.date),
       datasets: [
@@ -118,11 +116,12 @@ router.get('/reservation-chart', async (req, res) => {
       ]
     });
   } catch (err) {
+    console.error("❌ Error in /reservation-chart:", err);
     res.status(500).json({ error: 'Failed to load reservation chart' });
   }
 });
 
-// ---------- 4. Popular Airlines (Pie Chart) ----------
+// ---------- 4. Popular Airlines ----------
 router.get('/popular-airlines', async (req, res) => {
   try {
     const [results] = await db.query(`
@@ -145,17 +144,17 @@ router.get('/popular-airlines', async (req, res) => {
       ]
     });
   } catch (err) {
+    console.error("❌ Error in /popular-airlines:", err);
     res.status(500).json({ error: 'Failed to load popular airlines chart' });
   }
 });
 
-// ---------- 5. Flights Schedule (Line Chart) ----------
+// ---------- 5. Flights Schedule ----------
 router.get('/schedule-chart', async (req, res) => {
   try {
     const [domestic] = await db.query(`
       SELECT DATE(DepartureDateTime) AS date, COUNT(*) AS count
       FROM Flight
-      WHERE LENGTH(StopOver) = 0
       GROUP BY DATE(DepartureDateTime)
       ORDER BY date DESC
       LIMIT 7
@@ -164,7 +163,6 @@ router.get('/schedule-chart', async (req, res) => {
     const [international] = await db.query(`
       SELECT DATE(DepartureDateTime) AS date, COUNT(*) AS count
       FROM Flight
-      WHERE LENGTH(StopOver) > 0
       GROUP BY DATE(DepartureDateTime)
       ORDER BY date DESC
       LIMIT 7
@@ -188,8 +186,10 @@ router.get('/schedule-chart', async (req, res) => {
       ]
     });
   } catch (err) {
+    console.error("❌ Error in /schedule-chart:", err);
     res.status(500).json({ error: 'Failed to load flight schedule chart' });
   }
 });
 
 export default router;
+

@@ -214,7 +214,7 @@ router.put("/:id", async (req, res) => {
       [userID, flightID, seatID, status, bookingDate, reservationID]
     );
 
-    // Do not overwrite Payment.Status in case 0f == 'Successful'
+    // Do not overwrite Payment.Status in case of == 'Successful'
     const finalStatus = existingPaymentStatus === 'Successful'
       ? 'Successful'
       : (status === 'Confirmed' ? 'Successful' : 'Pending');

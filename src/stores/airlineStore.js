@@ -59,5 +59,18 @@ export const useAirlineStore = defineStore("airlineStore", {
         console.error("Failed to update airline status", err);
       }
     },
+    async deleteAirline(airlineID) {
+  try {
+    await axios.delete(`/api/airline/${airlineID}`);
+    this.airlines = this.airlines.filter(a => a.airlineID !== airlineID);
+    console.log(`Airline ${airlineID} deleted.`);
+  } catch (err) {
+    if (err.response?.status === 400) {
+      alert(err.response.data.error);
+    } else {
+      console.error("Error deleting airline:", err);
+    }
+  }
+},
   },
 });

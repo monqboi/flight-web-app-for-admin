@@ -168,9 +168,6 @@ router.put("/:id", async (req, res) => {
       // Set Reservation to Pending
       await db.query(`UPDATE Reservation SET Status = 'Pending' WHERE ReservationID = ?`, [reservationID]);
 
-      // Set Seat to Available
-      await db.query(`UPDATE Seat SET Available = 'No' WHERE SeatID = ?`, [seatID]);
-
       // Delete Passenger (if any)
       await db.query(`DELETE FROM Passenger WHERE ReservationID = ?`, [reservationID]);
 

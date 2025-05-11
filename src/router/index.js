@@ -3,6 +3,7 @@ import Dashboard from "@/views/Dashboard.vue";
 import Management from "@/views/management/Management.vue";
 import ManagementSeat from "@/views/management/ManagementSeat.vue";
 import ManagementAirline from "@/views/management/ManagementAirline.vue";
+import ManagementAircraft from "@/views/management/ManagementAircraft.vue";
 import ManagementFlight from "@/views/management/ManagementFlight.vue";
 import ManagementMenu from "@/views/management/ManagementMenu.vue";
 import FinanceManagement from '@/views/management/FinanceManagement.vue';
@@ -53,6 +54,11 @@ const router = createRouter({
           path: "airline",
           name: "management-airline",
           component: ManagementAirline,
+        },
+        {
+          path: "aircraft/:airlineID",
+          name: "management-aircraft",
+          component: ManagementAircraft,
         },
         {
           path: ":airlineID/flight",

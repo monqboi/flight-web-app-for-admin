@@ -80,7 +80,7 @@ router.get('/top-destinations', async (req, res) => {
   }
 });
 
-// Frequent Customers
+// Top Customers
 router.get('/top-customers', async (req, res) => {
   const top = parseInt(req.query.top) || 10;
   try {

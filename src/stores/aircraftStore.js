@@ -40,7 +40,7 @@ export const useAircraftStore = defineStore("aircraft", {
           airlineID: a.AirlineID,
           capacity: a.Capacity,
           registrationNumber: a.RegistrationNumber,
-          aircraftStatus: a.Status,
+          aircraftStatus: a.AircraftStatus,
         }));
         console.log("aircraft mapped:", this.aircraft);
       } catch (err) {
@@ -78,6 +78,29 @@ export const useAircraftStore = defineStore("aircraft", {
         }
       } catch (err) {
         console.error("Failed to update aircraft:", err);
+      }
+    },
+    async deleteAircraft(aircraftID) {
+      try {
+        await axios.delete(`/api/aircraft/${aircraftID}`);
+        this.aircraft = this.aircraft.filter(
+          (a) => Number(a.aircraftID) !== Number(aircraftID)
+        );
+        alert(`Aircraft ${aircraftID} deleted successfully.`);
+        console.log("Aircraft deleted:", aircraftID);
+      } catch (err) {
+        if (
+          err.response &&
+          err.response.status === 400 &&
+          err.response.data?.error?.includes("Cannot delete aircraft")
+        ) {
+          alert("Cannot delete aircraft: It is currently used in active or incomplete flights.");
+        } else if (err.response && err.response.status === 404) {
+          alert("Aircraft not found. It may have already been deleted.");
+        } else {
+          alert("Failed to delete aircraft due to a server error.");
+        }
+        console.error("Failed to delete aircraft:", err);
       }
     },
   },

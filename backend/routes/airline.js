@@ -177,13 +177,6 @@ router.put("/:id", async (req, res) => {
 router.put("/:id/status", async (req, res) => {
   const airlineID = req.params.id;
   const { airlineStatus } = req.body;
-
-  // Ensure status sent is correct as the system supports.
-  //const allowedStatuses = ['Open', 'Temporarily closed'];
-  //if (!allowedStatuses.includes(airlineStatus)) {
-  //  return res.status(400).send("Invalid status value.");
-  //}
-
   const query = `
     UPDATE Airline 
     SET AirlineStatus = ? 
@@ -202,4 +195,37 @@ router.put("/:id/status", async (req, res) => {
   }
 });
 
+// Delete Airline by ID (only if no Flights exist under it)
+router.delete("/:id", async (req, res) => {
+  const airlineID = req.params.id;
+  try {
+    // Check Flight in Airline
+    const [flights] = await db.query(
+      "SELECT COUNT(*) AS count FROM Flight WHERE AirlineID = ?",
+      [airlineID]
+    );
+
+    if (flights[0].count > 0) {
+      return res.status(400).json({
+        error: "Cannot delete airline that has existing flights.",
+      });
+    }
+    // Delete Airline 
+    const [result] = await db.query(
+      "DELETE FROM Airline WHERE AirlineID = ?",
+      [airlineID]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send("Airline not found");
+    }
+
+    res.json({ message: "Airline deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error deleting airline");
+  }
+});
+
 export default router;
+  

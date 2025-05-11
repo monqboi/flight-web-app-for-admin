@@ -85,4 +85,43 @@ router.put("/:id", async (req, res) => {
   }
 });
 
+// Delete Aircraft (only if no active flights using it)
+router.delete("/:id", async (req, res) => {
+  const aircraftID = req.params.id;
+
+  try {
+    // Check if there are any flights using this aircraft that are not completed.
+    const [flights] = await db.query(
+      `
+      SELECT * FROM Flight
+      WHERE AircraftID = ? AND Status != 'Completed'
+      `,
+      [aircraftID]
+    );
+
+    if (flights.length > 0) {
+      return res.status(400).json({
+        error: "Cannot delete aircraft. It is currently used in active or incomplete flights.",
+        flightsUsingAircraft: flights,
+      });
+    }
+
+    // If there are no flights that use this aircraft that are not-completed, you can delete them.
+    const [result] = await db.query(
+      `DELETE FROM Aircraft WHERE AircraftID = ?`,
+      [aircraftID]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: "Aircraft not found." });
+    }
+
+    res.json({ message: "Aircraft deleted successfully." });
+  } catch (err) {
+    console.error("Error deleting aircraft:", err);
+    res.status(500).json({ error: "Internal server error." });
+  }
+});
+
+
 export default router;
