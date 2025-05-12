@@ -48,6 +48,21 @@ const chartOptions = {
   },
 };
 
+const formatNumber = (num) => {
+  if (typeof num !== 'number') return num;
+  if (num >= 1_000_000_000) return (num / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'B'
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (num >= 1_000) return (num / 1_000).toFixed(0) + 'K'
+  return num.toString()
+}
+
+const formatStatValue = (stat) => {
+  const num = Number(stat.value);
+  if (isNaN(num)) return stat.value; // For "Online" or text
+  const formatted = formatNumber(num);
+  return stat.title === 'Revenue' ? formatted + ' ฿' : formatted;
+};
+
 const pieChartOptions = {
   responsive: true,
   cutout: "70%",
@@ -303,7 +318,7 @@ const goToAirlineManagement = () => {
 
           <div class="stat-content">
             <h3>{{ stat.title }}</h3>
-            <div class="stat-value">{{ stat.value }}</div>
+            <div class="stat-value">{{ formatStatValue(stat) }}</div>
           </div>
           <div class="plane-icon" v-if="index !== stats.length - 1">
             <img

@@ -20,7 +20,7 @@ router.get('/stats', async (req, res) => {
     res.json([
       { title: 'Users', value: countUsers },
       { title: 'Flights', value: countFlights },
-      { title: 'Revenue', value: `${totalRevenue}฿` },
+      { title: 'Revenue', value: totalRevenue },
       { title: 'Global', value: 'Online' } 
     ]);
   } catch (err) {
