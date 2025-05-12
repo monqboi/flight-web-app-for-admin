@@ -39,3 +39,19 @@ export function minutesToHours(minutes) {
     const hours = (minutes / 60).toFixed(1);
     return `${hours} hrs`;
 }
+
+export function formatDateTime(isoString) {
+  if (!isoString) return "-";
+  try {
+    const date = new Date(isoString);
+    return date.toLocaleString("en-GB", {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch (err) {
+    return "-";
+  }
+}

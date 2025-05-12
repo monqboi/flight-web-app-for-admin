@@ -54,48 +54,57 @@ const router = createRouter({
           path: "airline",
           name: "management-airline",
           component: ManagementAirline,
-        },
-        {
-          path: "aircraft/:airlineID",
-          name: "management-aircraft",
-          component: ManagementAircraft,
+          meta: { rolesAllowed: ['flightadmin', 'superadmin'] }
         },
         {
           path: ":airlineID/flight",
           name: "management-flight",
           component: ManagementFlight,
+          meta: { rolesAllowed: ['flightadmin', 'superadmin'] }
         },
         {
           path: ":airlineID/flight/:flightID/seat",
           name: "management-seat",
           component: ManagementSeat,
+          meta: { rolesAllowed: ['flightadmin', 'superadmin'] }
+        },
+        {
+          path: "aircraft/:airlineID",
+          name: "management-aircraft",
+          component: ManagementAircraft,
+          meta: { rolesAllowed: ['flightadmin', 'superadmin'] }
         },
         {
           path: 'finance',
           name: 'FinanceManagement',
-          component: FinanceManagement
+          component: FinanceManagement,
+          meta: { rolesAllowed: ['flightadmin', 'financeadmin', 'superadmin'] }
         },
         {
           path: 'users',
           name: 'UserManagement',
-          component: UserManagement
+          component: UserManagement,
+          meta: { rolesAllowed: ['useradmin', 'superadmin'] }
         }, 
         {
           path: ":airlineID/flight/:flightID/passengers",
           name: "PassengerManagement",
-          component: PassengerManagement
+          component: PassengerManagement,
+          meta: { rolesAllowed: ['flightadmin', 'superadmin'] }
         },
         {
           path: ':airlineID/flight/:flightID/reservations',
           name: 'FlightReservation',
-          component: FlightReservation
+          component: FlightReservation,
+          meta: { rolesAllowed: ['flightadmin', 'superadmin'] }
         }
       ],
     },
     {
       path: '/users/:id/edit',
       name: 'modify-user',
-      component: ModifyUser
+      component: ModifyUser,
+      meta: { rolesAllowed: ['useradmin', 'superadmin'] }
     },
     {
       path: '/reports',
@@ -104,9 +113,22 @@ const router = createRouter({
     },
     { path: '/admin-management',
       name: 'admin-management',
-      component: AdminManagement 
+      component: AdminManagement,
+      meta: { rolesAllowed: ['superadmin'] } 
     }
   ],
+});
+router.beforeEach((to, from, next) => {
+  const token = localStorage.getItem('token');
+  const payload = token ? JSON.parse(atob(token.split('.')[1])) : {};
+  const role = payload.role?.toLowerCase() || payload.Role?.toLowerCase() || null;
+
+  // If route has meta.rolesAllowed, enforce role restriction
+  if (to.meta.rolesAllowed && !to.meta.rolesAllowed.includes(role)) {
+    return next('/dashboard'); // Or redirect to unauthorized page
+  }
+
+  next(); // allow access
 });
 
 export default router ;

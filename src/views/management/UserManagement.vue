@@ -1,12 +1,12 @@
 <template>
   <div class="admin-card user-management">
-  <div class="card-header">
-    <div class="left">
-      <h2>All Users</h2>
-      <p class="subtitle">Manage registered user information</p>
-    </div>
-    <div class="right">
-      <div class="search-container">
+    <div class="card-header">
+      <div class="left">
+        <h2>All Users</h2>
+        <p class="subtitle">Manage registered user information</p>
+      </div>
+      <div class="right">
+        <div class="search-container">
           <div class="search-icon">
             <img src="/search-input.svg" alt="Search Input Icon" />
           </div>
@@ -17,11 +17,11 @@
             v-model="search"
           />
         </div>
-      <button class="add-btn" @click="showAddModal = true">+ Add</button>
+        <button class="add-btn" @click="showAddModal = true">+ Add</button>
+      </div>
     </div>
-  </div>
 
-  <div class="table-section users">
+    <div class="table-section users">
       <div class="table-row table-head">
         <div>Profile</div>
         <div>User ID</div>
@@ -34,47 +34,32 @@
       <div
         class="table-row"
         v-for="user in paginatedUsers"
-        :key="user.id"
-        :class="{ suspended: user.status === 'Suspended' }"
+        :key="user.UserID"
+        :class="{ suspended: user.UserStatus === 'Suspended' }"
       >
-      <div>
-        <img :src="user.profile || '/src/assets/default-avatar.png'" alt="Avatar" class="table-avatar" />
-      </div>
-        <div><span :class="{ strike: user.status === 'Suspended' }">{{ user.id }}</span></div>
-        <div><span :class="{ strike: user.status === 'Suspended' }">{{ user.username }}</span></div>
+       <img
+        :src="isValidBase64Image(user.ProfilePicture) ? user.ProfilePicture : '/src/assets/default-avatar.png'"
+        alt="Avatar"
+        class="table-avatar"
+      />
+        <div><span :class="{ strike: user.UserStatus === 'Suspended' }">{{ user.UserID }}</span></div>
+        <div><span :class="{ strike: user.UserStatus === 'Suspended' }">{{ user.Username }}</span></div>
         <div>
-          <span
-            class="status suspended"
-            v-if="user.status === 'Suspended'"
-          >
-            Suspended
-          </span>
+          <span class="status suspended" v-if="user.UserStatus === 'Suspended'">Suspended</span>
           <span class="status active" v-else>Active</span>
         </div>
-        <div><span :class="{ strike: user.status === 'Suspended' }">{{ user.firstname }} {{ user.lastname }}</span></div>
-        <div><span :class="{ strike: user.status === 'Suspended' }">{{ user.email }}</span></div>
+        <div><span :class="{ strike: user.UserStatus === 'Suspended' }">{{ user.Firstname }} {{ user.Lastname }}</span></div>
+        <div><span :class="{ strike: user.UserStatus === 'Suspended' }">{{ user.Email }}</span></div>
         <div class="action-buttons">
-          <router-link 
-            :to="{ name: 'modify-user', params: { id: user.id } }"
-            class="action-btn"
-            title="Edit"
-          >
+          <router-link :to="{ name: 'modify-user', params: { id: user.UserID } }" class="action-btn" title="Edit">
             <font-awesome-icon icon="edit" />
           </router-link>
-          
-          <button 
-            class="action-btn"
-            @click="toggleSuspend(user)"
-            :title="user.status === 'Suspended' ? 'Unsuspend' : 'Suspend'"
-          >
-            <font-awesome-icon :icon="user.status === 'Suspended' ? 'undo' : 'user-slash'" />
+
+          <button class="action-btn" @click="toggleSuspend(user)" :title="user.UserStatus === 'Suspended' ? 'Unsuspend' : 'Suspend'">
+            <font-awesome-icon :icon="user.UserStatus === 'Suspended' ? 'undo' : 'user-slash'" />
           </button>
-          
-          <button 
-            class="action-btn"
-            @click="deleteUser(user.id)"
-            title="Delete"
-          >
+
+          <button class="action-btn" @click="deleteUser(user.UserID)" title="Delete">
             <font-awesome-icon icon="trash" />
           </button>
         </div>
@@ -87,7 +72,7 @@
         <h3>Add User</h3>
         <div class="profile-upload">
           <label class="avatar-wrapper">
-            <img :src="newUser.profile || defaultAvatar"  alt="Avatar" />
+            <img :src="newUser.profile || '/src/assets/default-avatar.png'" alt="Avatar" />
             <input type="file" accept="image/*" @change="onFileChange" />
             <span class="upload-icon">+</span>
           </label>
@@ -112,7 +97,6 @@
       </div>
     </div>
 
-
     <div class="pagination">
       <button :disabled="currentPage === 1" @click="currentPage--">«</button>
       <button 
@@ -125,110 +109,189 @@
       </button>
       <button :disabled="currentPage === totalPages" @click="currentPage++">»</button>
     </div>
-
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue';
-import { useRouter } from 'vue-router';
-import { watchEffect } from 'vue';
-import defaultAvatar from '@/assets/default-avatar.png';  
+import { ref, computed, onMounted, watchEffect } from 'vue'
+import api from '/src/utils/api'
 
-// State
-const search = ref('');
-const showAddModal = ref(false);
-const showEditModal = ref(false);
-const users = reactive([
-  { id: 1, firstname: 'Alice', middlename: 'B.', lastname: 'Brown', email: 'alice@example.com', phone: '0812345678', passport: 'A12345678', username: 'alicebrown', password: 'secret123', status: 'Active' },
-  { id: 2, firstname: 'Bob', middlename: '', lastname: 'Smith', email: 'bob@example.com', phone: '0823456789', passport: 'B98765432', username: 'bobsmith', password: 'password456', status: 'Inactive' }
-]);
+const usersAll = ref([])
+const currentPage = ref(1)
+const pageSize = ref(5)
+const showAddModal = ref(false)
+const search = ref('')
 
-const currentPage = ref(1);
-const usersPerPage = 5;
+const newUser = ref({
+  profile: '',
+  firstname: '',
+  middlename: '',
+  lastname: '',
+  email: '',
+  phone: '',
+  passport: '',
+  username: '',
+  password: '',
+  status: 'Active',
+  nationality: '',
+  birthdate: '',
+  address: ''
+})
+
+const filteredUsers = computed(() =>
+  usersAll.value.filter(u =>
+    (`${u.Firstname} ${u.Lastname}`.toLowerCase().includes(search.value.toLowerCase()) ||
+     u.Email.toLowerCase().includes(search.value.toLowerCase()) ||
+     u.Username.toLowerCase().includes(search.value.toLowerCase()))
+  )
+)
+
+const sortedUsers = computed(() => {
+  const active = filteredUsers.value.filter(u => u.UserStatus !== 'Suspended')
+  const suspended = filteredUsers.value.filter(u => u.UserStatus === 'Suspended')
+  return [...active, ...suspended]
+})
 
 const paginatedUsers = computed(() => {
-  const start = (currentPage.value - 1) * usersPerPage;
-  return sortedUsers.value.slice(start, start + usersPerPage);
-});
+  const start = (currentPage.value - 1) * pageSize.value
+  return sortedUsers.value.slice(start, start + pageSize.value)
+})
 
 const totalPages = computed(() => {
-  return Math.ceil(sortedUsers.value.length / usersPerPage);
-});
+  return Math.ceil(sortedUsers.value.length / pageSize.value)
+})
 
-
-const newUser = reactive({  profile: '', firstname: '', middlename: '', lastname: '', email: '', phone: '', passport: '', username: '', password: '', status: 'Active' });
-
-let editUser = reactive(null);
-
-// Computed
-const filteredUsers = computed(() =>
-  users.filter(u =>
-    (`${u.firstname} ${u.lastname}`.toLowerCase().includes(search.value.toLowerCase()) ||
-     u.email.toLowerCase().includes(search.value.toLowerCase()) ||
-     u.username.toLowerCase().includes(search.value.toLowerCase()))
-  )
-);
-const sortedUsers = computed(() => {
-  const active = filteredUsers.value.filter(u => u.status !== 'Suspended');
-  const suspended = filteredUsers.value.filter(u => u.status === 'Suspended');
-  return [...active, ...suspended];
-});
-
-// Methods
-function addUser() {
-  if (!newUser.firstname || !newUser.email) return alert('Please fill required fields');
-
-  users.push({ id: Date.now(), ...newUser }); // ชั่วคราว
-
-  Object.assign(newUser, {
-    profile: '',
-    firstname: '', middlename: '', lastname: '',
-    email: '', phone: '', passport: '',
-    username: '', password: '', status: 'Active'
-  });
-
-  showAddModal.value = false;
-  search.value = ''; // ✅ Reset search input
-
-  // ตรวจสอบว่า pagination ยังอยู่ในหน้าที่ valid
-  if (currentPage.value > totalPages.value) {
-    currentPage.value = totalPages.value || 1;
+const fetchUsers = async () => {
+  try {
+    const res = await api.get('/users')
+    usersAll.value = res.data.map(normalizeUserFields)
+  } catch (err) {
+    console.error('โหลดข้อมูลผู้ใช้ล้มเหลว:', err)
   }
-
-  watchEffect(() => {
-  if (currentPage.value > totalPages.value) {
-    currentPage.value = totalPages.value || 1;
-  }
-  });
 }
+
+
+const addUser = async () => {
+  
+  if (!newUser.value.firstname || !newUser.value.email || !newUser.value.username || !newUser.value.password) {
+    alert('กรุณากรอกข้อมูลที่จำเป็น')
+    return
+  }
+  try {
+    const res = await api.post('/users', newUser.value)
+
+    if (newUser.value.profile) {
+      await api.post(`/users/${res.data.userId}/profile`, {
+        imageUrl: newUser.value.profile
+      })
+    }
+
+    await fetchUsers()
+    discardAddUser()
+  } catch (err) {
+    if (err.response?.status === 409) {
+      alert('Username หรือ Email นี้ถูกใช้ไปแล้ว')
+    } else {
+      console.error('เพิ่มผู้ใช้ล้มเหลว:', err)
+    }
+  }
+  
+}
+
+const deleteUser = async (id) => {
+  if (!confirm('ยืนยันการลบผู้ใช้งาน?')) return
+  try {
+    await api.delete(`/users/${id}`)
+    await fetchUsers()
+  } catch (err) {
+    console.error('ลบผู้ใช้ล้มเหลว:', err)
+  }
+}
+
+const toggleSuspend = async (user) => {
+  const newStatus = user.UserStatus === 'Suspended' ? 'Active' : 'Suspended'
+  try {
+    await api.patch(`/users/${user.UserID}/status`, { status: newStatus })
+    await fetchUsers()
+  } catch (err) {
+    console.error('เปลี่ยนสถานะล้มเหลว:', err)
+  }
+}
+
 function onFileChange(e) {
-  const file = e.target.files[0];
+  const file = e.target.files[0]
   if (file) {
-    const reader = new FileReader();
+    const reader = new FileReader()
     reader.onload = () => {
-      newUser.profile = reader.result;
-    };
-    reader.readAsDataURL(file);
+      newUser.value.profile = reader.result
+    }
+    reader.readAsDataURL(file)
   }
 }
-function toggleSuspend(user) {
-  user.status = user.status === 'Suspended' ? 'Active' : 'Suspended';
+function getValidProfilePicture(pic) {
+  if (!pic || typeof pic !== 'string') return '/src/assets/default-avatar.png'
+
+  // ✅ ถ้าเริ่มด้วย data:image = base64 valid
+  if (pic.startsWith('data:image')) return pic
+
+  // ✅ ถ้า pic เป็น URL ที่สมบูรณ์ เช่น https://example.com/image.jpg
+  try {
+    const url = new URL(pic)
+    return url.href
+  } catch {
+    return '/src/assets/default-avatar.png'
+  }
 }
-function deleteUser(id) {
-  if (confirm('Confirm delete?')) users.splice(users.findIndex(u => u.id === id), 1);
+function isValidBase64Image(str) {
+  if (!str || typeof str !== 'string') return false
+  if (!str.startsWith('data:image')) return false
+  try {
+    const base64Part = str.split(',')[1]
+    atob(base64Part) 
+    return true
+  } catch {
+    return false
+  }
 }
+
 function discardAddUser() {
-  Object.assign(newUser, {
+  Object.assign(newUser.value, {
     profile: '',
     firstname: '', middlename: '', lastname: '',
     email: '', phone: '', passport: '',
-    username: '', password: '', status: 'Active'
-  });
-  showAddModal.value = false;
+    username: '', password: '', status: 'Active',
+    nationality: '', birthdate: '', address: ''
+  })
+  showAddModal.value = false
+  search.value = ''
+}
+function normalizeUserFields(u) {
+  return {
+    ...u,
+    Username: u.Username || u.username || '',
+    Firstname: u.Firstname || u.firstname || '',
+    Middlename: u.Middlename || u.middlename || '',
+    Lastname: u.Lastname || u.lastname || '',
+    Email: u.Email || u.email || '',
+    Phone: u.Phone || u.phone || '',
+    UserStatus: u.UserStatus || u.status || 'Active',
+    ProfilePicture: u.ProfilePicture || u.profile || ''
+  }
 }
 
+watchEffect(() => {
+  if (currentPage.value > totalPages.value) {
+    currentPage.value = totalPages.value || 1
+  }
+  fetchUsers()
+})
+
+onMounted(() => {
+  fetchUsers()
+})
 </script>
+
+
 
 <style scoped>
 /* --- Router Link Looks Like Button --- */

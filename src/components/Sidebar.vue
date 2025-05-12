@@ -1,8 +1,39 @@
 <script setup>
 import { useRoute, useRouter } from "vue-router";
+import { ref, onMounted } from 'vue'
+import api from '/src/utils/api'
+import { jwtDecode } from 'jwt-decode'
 
-const route = useRoute();
-const router = useRouter();
+const route = useRoute()
+const router = useRouter()
+
+const userName = ref('Loading...')
+const userEmail = ref('Loading...')
+const userImage = ref('/src/assets/default-avatar.png')
+
+onMounted(async () => {
+  const token = localStorage.getItem('token')
+  if (!token || typeof token !== 'string') {
+    console.warn("❌ Token not found or invalid")
+    return
+  }
+
+  try {
+    const decoded = jwtDecode(token)
+    const userId = decoded.userId || decoded.UserID || decoded.userID
+
+    const res = await api.get(`/users/${userId}`)
+    userImage.value = res.data.ProfilePicture?.startsWith('data:image')
+      ? res.data.ProfilePicture
+      : '/src/assets/default-avatar.png'
+    userName.value = res.data.Firstname + ' ' + res.data.Lastname
+    userEmail.value = res.data.Email
+  } catch (err) {
+    console.error('❌ Failed to fetch user info:', err)
+    localStorage.removeItem('token')
+  }
+})
+
 
 const navItems = [
   { icon: "home", label: "Dashboard", path: "/dashboard" },
@@ -32,12 +63,12 @@ const activeUsers = [
     <div class="profile-section">
       <div class="profile-container">
         <div class="profile-image">
-          <img src="https://i.pravatar.cc/40?img=1" alt="Admin profile" />
+          <img :src="userImage" alt="Admin profile" />
         </div>
       </div>
       <div class="profile-info">
-        <h3>Admin</h3>
-        <p>admin.cpearline@gmail.com</p>
+        <h3>{{ userName }}</h3>
+        <p>{{ userEmail }}</p>
         <button class="logout-btn" @click="router.push({ name: 'login' })">
           <div class="icon">
             <img :src="iconMap.logout" alt="Logout icon" />
@@ -314,3 +345,4 @@ const activeUsers = [
   opacity: 0.9;
 }
 </style>
+

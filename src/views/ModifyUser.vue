@@ -1,11 +1,11 @@
 <template>
-  <div class="content modify-user-page">
+  <div class="content modify-user-page" v-if="user">
     <!-- Top Bar -->
     <div class="top-bar">
       <button class="back-btn" @click="goBack"><font-awesome-icon icon="arrow-left" /></button>
       <div class="user-id-header">
-        <h2>{{ user.username }}</h2>
-        <p>#{{ user.id }}</p>
+        <h2>{{ user.Username }}</h2>
+        <p>#{{ user.UserID }}</p>
       </div>
       <button class="save-btn" @click="saveChanges">Save <font-awesome-icon icon="check" /></button>
     </div>
@@ -16,13 +16,13 @@
       <section class="user-details-panel">
         <div class="user-photo">
           <label class="photo-wrapper">
-            <img :src="user.profile || '/src/assets/default-avatar.png'" alt="User Photo" />
+            <img :src="user.ProfilePicture?.startsWith('data:image') ? user.ProfilePicture : '/src/assets/default-avatar.png'" alt="User Photo" />
             <input type="file" accept="image/*" @change="onFileChange" />
             <span class="edit-icon">
               <font-awesome-icon icon="pen-to-square" />
             </span>
           </label>
-          <h3>{{ user.firstname }} {{ user.middlename }} {{ user.lastname }}</h3>
+          <h3>{{ user.Firstname }} {{ user.Middlename }} {{ user.Lastname }}</h3>
         </div>
 
         <div class="user-edit-fields">
@@ -39,28 +39,32 @@
         <div class="booking-section">
           <h3>Booking</h3>
           <div class="booking-box">
-            <div class="booking-cards">
+            <div v-if="bookings.length > 0" class="booking-cards">
               <div v-for="(b, i) in bookings" :key="i" class="booking-card">
                 <div class="booking-left">
                   <img src="/src/assets/plane-fly.png" class="plane-icon" />
                   <div class="flight-info">
-                    <strong>{{ b.from }}</strong>
-                    <span>{{ b.depart }}</span>
+                    <strong>{{ b.from_location }}</strong>
+                    <span>{{ formatDateTime(b.depart) }}</span>
                   </div>
                 </div>
                 <div class="booking-middle">
                   <img src="/src/assets/fly-duration.png" class="fly-line" />
-                  <p class="duration">{{ b.duration }}</p>
-                  <p class="stops">{{ b.stops }}</p>
+                  <p class="duration">{{ minutesToHours(b.duration)}}</p>
+                  <p class="stops">{{ b.stops || '-' }}</p>
                 </div>
                 <div class="booking-right">
                   <img src="/src/assets/plane-land.png" class="plane-icon" />
                   <div class="flight-info">
-                    <strong>{{ b.to }}</strong>
-                    <span>{{ b.arrive }}</span>
+                    <strong>{{ b.to_location }}</strong>
+                    <span>{{ formatDateTime(b.arrive) }}</span>
                   </div>
                 </div>
               </div>
+            </div>
+            <div v-else class="no-data-card">
+              <img src="/src/assets/empty.png" alt="No bookings" />
+              <p class="no-data-text">This user has no booking records</p>
             </div>
           </div>
         </div>
@@ -68,6 +72,7 @@
         <!-- Payment Section -->
         <div class="payment-section">
           <h3>Payment</h3>
+          <div v-if="payments.length > 0">
           <table class="payment-table">
             <thead>
               <tr>
@@ -80,7 +85,7 @@
             </thead>
             <tbody>
               <tr v-for="(p, i) in payments" :key="i">
-                <td>{{ p.id }}</td>
+                <td>{{ p.paymentId }}</td>
                 <td>{{ p.route }}</td>
                 <td>{{ p.date }}</td>
                 <td>{{ p.amount }}</td>
@@ -89,46 +94,40 @@
             </tbody>
           </table>
         </div>
+        <div v-else class="no-data-card">
+          <img src="/src/assets/empty.png" alt="No payments" />
+          <p class="no-data-text">This user has no payment history</p>
+        </div>
+        </div>
       </section>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import api from '/src/utils/api'
+import { formatDateTime } from "@/utils/timeFunction";
 
 const router = useRouter()
 const route = useRoute()
+const userId = route.params.id
 
-// Load user list from localStorage
-const userList = JSON.parse(localStorage.getItem('userList') || '[]')
-const userId = Number(route.params.id)
-const user = ref(userList.find(u => u.id === userId) || {})
+const user = ref({})
+const bookings = ref([])
+const payments = ref([])
 
 const editableFields = [
-  { key: 'username', label: 'Username', icon: 'user' },
-  { key: 'password', label: 'Password', icon: 'lock' },
-  { key: 'firstname', label: 'First name', icon: 'user-tag' },
-  { key: 'middlename', label: 'Middle name', icon: 'user-tag' },
-  { key: 'lastname', label: 'Last name', icon: 'user-tag' },
-  { key: 'email', label: 'Email', icon: 'envelope' },
-  { key: 'phone', label: 'Phone', icon: 'phone' },
+  { key: 'Username', label: 'Username', icon: 'user' },
+  { key: 'Password', label: 'Password', icon: 'lock' },
+  { key: 'Firstname', label: 'First name', icon: 'user-tag' },
+  { key: 'Middlename', label: 'Middle name', icon: 'user-tag' },
+  { key: 'Lastname', label: 'Last name', icon: 'user-tag' },
+  { key: 'Email', label: 'Email', icon: 'envelope' },
+  { key: 'Phone', label: 'Phone', icon: 'phone' },
 ]
 
-const bookings = ref([
-  { from: 'BKK', depart: '18:00', to: 'CNX', arrive: '18:00', duration: '11hrs', stops: '1 Stop' },
-  { from: 'BKK', depart: '18:00', to: 'CNX', arrive: '18:00', duration: '11hrs', stops: '1 Stop' },
-  { from: 'BKK', depart: '18:00', to: 'CNX', arrive: '18:00', duration: '11hrs', stops: '1 Stop' }
-])
-
-const payments = ref([
-  { id: 'PY-12345', route: 'BKK → JKT', date: 'Mar 09, 2025', amount: 5000, status: 'Pending' },
-  { id: 'PY-12345', route: 'BKK → JKT', date: 'Mar 09, 2025', amount: 5000, status: 'Pending' },
-  { id: 'PY-12345', route: 'BKK → JKT', date: 'Mar 09, 2025', amount: 5000, status: 'Pending' }
-])
-
-// Helper function to extract icon name from old format
 function getIconName(oldIcon) {
   return oldIcon.replace('fas fa-', '')
 }
@@ -137,25 +136,59 @@ function goBack() {
   router.back()
 }
 
-function saveChanges() {
-  const idx = userList.findIndex(u => u.id === user.value.id)
-  if (idx !== -1) {
-    userList[idx] = { ...user.value }
-    localStorage.setItem('userList', JSON.stringify(userList))
-  }
-  router.push({ name: 'user-management' })
-}
-
 function onFileChange(e) {
   const file = e.target.files[0];
   if (file) {
     const reader = new FileReader();
     reader.onload = () => {
-      user.value.profile = reader.result;
+      user.value.ProfilePicture = reader.result;
     };
     reader.readAsDataURL(file);
   }
 }
+
+async function saveChanges() {
+  try {
+    await api.put(`/users/${userId}`, user.value)
+
+    if (user.value.ProfilePicture?.startsWith('data:image')) {
+      await api.post(`/users/${userId}/profile`, {
+        imageUrl: user.value.ProfilePicture
+      })
+    }
+
+    alert('ข้อมูลถูกบันทึกแล้ว')
+    router.push({ name: 'UserManagement' }).then(() => {
+      window.location.reload()
+    })
+  } catch (err) {
+    console.error('บันทึกไม่สำเร็จ:', err)
+    alert('บันทึกไม่สำเร็จ')
+  }
+}
+
+onMounted(async () => {
+  try {
+    const res = await api.get(`/users/${userId}`)
+    user.value = res.data
+  } catch (err) {
+    console.error('โหลดข้อมูลผู้ใช้ล้มเหลว:', err)
+  }
+
+  try {
+    const res = await api.get(`/users/${userId}/bookings`)
+    bookings.value = res.data
+  } catch (err) {
+    console.warn('ไม่มีข้อมูล booking:', err.message)
+  }
+
+  try {
+    const res = await api.get(`/users/${userId}/payments`)
+    payments.value = res.data
+  } catch (err) {
+    console.warn('ไม่มีข้อมูล payment:', err.message)
+  }
+})
 
 </script>
 
@@ -167,7 +200,17 @@ function onFileChange(e) {
 .save-btn { background-color: #f6b52e; color: white; padding: 10px 25px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 
 .modify-user-layout { display: flex; gap: 30px; }
-.user-details-panel { flex: 1.2; background: white; border-radius: 16px; padding: 25px; box-shadow: 0 5px 25px rgba(0,0,0,0.1); }
+.user-details-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  background: white;
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 5px 25px rgba(0,0,0,0.1);
+  max-height: fit-content; /* ✅ ไม่ให้ยืดเกินเนื้อหา */
+  align-self: flex-start;   /* ✅ ปรับให้ยึดตามเนื้อหา ไม่ยืดตาม column */
+}
 .user-photo { text-align: center; margin-bottom: 20px; }
 .user-photo img { width: 160px; height: 160px; border-radius: 50%; object-fit: cover; border: 5px solid #f6b52e; }
 .user-photo h3 { font-size: 18px; margin-top: 15px; }
@@ -191,8 +234,8 @@ function onFileChange(e) {
 .payment-section th, .payment-section td { padding: 12px 16px; border-bottom: 1px solid #eee; font-size: 14px; }
 .payment-section th { background: #f5f5f5; }
 .badge.pending { background-color: #f6b52e; }
-.badge.success { background-color: #4caf50; }
-.badge.failed  { background-color: #d32f2f; }
+.badge.successful { background-color: #4caf50; color: #ffffff}
+.badge.failed  { background-color: #d32f2f; color: #ffffff}
 .photo-wrapper {
   top: 25px;
   position: relative;
@@ -200,7 +243,13 @@ function onFileChange(e) {
   width: 160px;
   height: 160px;
 }
-
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+}
 .photo-wrapper img {
   top: 25px;
   width: 100%;
@@ -232,7 +281,6 @@ function onFileChange(e) {
   z-index: 1;
 }
 .user-details-panel {
-  /* เพิ่มสิ่งนี้ */
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -246,6 +294,28 @@ function onFileChange(e) {
 .field-row input {
   font-size: 14px;
   padding: 10px 12px;
+}
+
+.no-data-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  color: #999;
+  background: #ffffff;
+  border-radius: 12px;
+}
+
+.no-data-card img {
+  width: 120px;
+  height: auto;
+  opacity: 0.6;
+  margin-bottom: 1rem;
+}
+
+.no-data-text {
+  font-style: italic;
+  font-size: 1rem;
 }
 
 </style>

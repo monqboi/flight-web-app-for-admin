@@ -1,6 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import db from "./db.js";
+import authRouter from "./routes/auth.js";
+import adminRouter from './routes/admin.js';
+import userRouter from "./routes/users.js";
+import seatRouter from "./routes/seats.js";
 import airlineRouter from "./routes/airline.js";
 import flightRouter from "./routes/flight.js";
 import reservationRouter from "./routes/reservation.js";
@@ -15,7 +19,8 @@ const port = 3000;
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }))
+app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // Basic route
 app.get('/', (req, res) => {
@@ -23,6 +28,10 @@ app.get('/', (req, res) => {
 });
 
 // Use routers
+app.use("/api/auth", authRouter);
+app.use('/api/admins', adminRouter);
+app.use("/api/users", userRouter);
+app.use("/api/seats", seatRouter);
 app.use("/api/airline", airlineRouter);
 app.use("/api/flight", flightRouter);
 app.use("/api/aircraft", aircraftRouter);
