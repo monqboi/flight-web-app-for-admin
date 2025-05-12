@@ -94,23 +94,25 @@
     paginatedFlights.value = flights;
   };
 
-  const addFlight = (newFlight) => {
-  const cleanStops = (newFlight.stopOvers || []).filter(s => s && s.trim() !== "");
-  flightStore.addFlight({
-    ...newFlight,
-    stopOvers: cleanStops,
-  });
-  isShowModal.value = false;
+  const addFlight = async (newFlight) => {
+    const cleanStops = (newFlight.stopOvers || []).filter(s => s && s.trim() !== "");
+    flightStore.addFlight({
+      ...newFlight,
+      stopOvers: cleanStops,
+    });
+    await flightStore.loadFlights();
+    isShowModal.value = false;
   };
 
 
-  const editFlight = (flightID, updatedFlight) => {
-  const cleanStops = (updatedFlight.stopOvers || []).filter(s => s && s.trim() !== "");
-  flightStore.updateFlight(flightID, {
-    ...updatedFlight,
-    stopOvers: cleanStops,
-  });
-  isShowModal.value = false;
+  const editFlight = async (flightID, updatedFlight) => {
+    const cleanStops = (updatedFlight.stopOvers || []).filter(s => s && s.trim() !== "");
+    flightStore.updateFlight(flightID, {
+      ...updatedFlight,
+      stopOvers: cleanStops,
+    });
+    await flightStore.loadFlights();
+    isShowModal.value = false;
   };
 
   const showModalAddFlight = () => {

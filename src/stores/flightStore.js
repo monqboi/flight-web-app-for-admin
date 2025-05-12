@@ -30,19 +30,19 @@ export const useFlightStore = defineStore("flight", {
     async loadFlights() {
       try {
         const res = await axios.get("/api/flight");
-    
+
         this.flights = res.data.map((flight) => {
           let parsedStops = [];
-    
+
           if (Array.isArray(flight.stopOvers)) {
             parsedStops = flight.stopOvers;
           } else if (typeof flight.stopOvers === "string") {
             parsedStops = flight.stopOvers.split(",").map((s) => s.trim());
           }
-    
+
           return {
             ...flight,
-            stopOvers: parsedStops,  
+            stopOvers: parsedStops,
           };
         });
       } catch (error) {
@@ -52,7 +52,7 @@ export const useFlightStore = defineStore("flight", {
 
     async addFlight(flightData) {
       try {
-        const response = await axios.post("/api/flight", {
+        await axios.post("/api/flight", {
           airlineID: flightData.airlineID,
           departure: flightData.departure.airport,
           departureDate: flightData.departure.date,
@@ -67,12 +67,8 @@ export const useFlightStore = defineStore("flight", {
           price: Number(flightData.flightPrice),
         });
 
-        const newFlight = {
-          ...flightData,
-          flightID: response.data.flightID,
-        };
-
-        this.flights.push(newFlight);
+        // Reload flights to get updated isSeatAvailable
+        await this.loadFlights();
       } catch (error) {
         console.error("Failed to add flight:", error);
       }
@@ -94,12 +90,8 @@ export const useFlightStore = defineStore("flight", {
           price: Number(updatedFlight.flightPrice),
         });
 
-        const index = this.flights.findIndex(f => f.flightID === flightID);
-        if (index !== -1) this.flights[index] = { ...
-          updatedFlight, 
-          flightID, 
-          isSeatAvailable: original.isSeatAvailable ?? true
-        };
+        // Reload updated flight list to get fresh isSeatAvailable value
+        await this.loadFlights();
       } catch (error) {
         console.error("Failed to update flight:", error);
       }

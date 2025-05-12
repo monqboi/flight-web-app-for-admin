@@ -21,6 +21,15 @@ router.get("/", async (req, res) => {
       const [stops] = await db.query("SELECT Location FROM StopOver WHERE FlightID = ?", [flight.FlightID]);
       const stopLocations = stops.map(s => s.Location);
 
+      const [seatAvailableResult] = await db.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM Seat 
+          WHERE FlightID = ? AND Available = 'Yes'
+        ) AS isAvailable
+      `, [flight.FlightID]);
+
+      const isSeatAvailable = seatAvailableResult[0].isAvailable === 1;
+
       const departureDateTime = new Date(flight.DepartureDateTime);
       const arrivalDateTime = new Date(flight.ArrivalDateTime);
 
@@ -45,7 +54,7 @@ router.get("/", async (req, res) => {
         aircraftID: flight.AircraftID,
         flightStatus: flight.Status,
         flightPrice: flight.Price,
-        isSeatAvailable: true,
+        isSeatAvailable: isSeatAvailable,
       };
     }));
 
@@ -72,6 +81,12 @@ router.get("/:id", async (req, res) => {
     const [stops] = await db.query("SELECT Location FROM StopOver WHERE FlightID = ?", [flight.FlightID]);
     const stopLocations = stops.map(s => s.Location);
 
+    const [seatAvailableResult] = await db.query(
+      "SELECT COUNT(*) AS availableCount FROM Seat WHERE FlightID = ? AND Available = 'Yes'",
+      [flight.FlightID]
+    );
+    const isSeatAvailable = seatAvailableResult[0].availableCount > 0;
+
     res.json({
       flightID: flight.FlightID,
       airlineID: flight.AirlineID,
@@ -93,7 +108,7 @@ router.get("/:id", async (req, res) => {
       aircraftID: flight.AircraftID,
       flightStatus: flight.Status,
       flightPrice: flight.Price,
-      isSeatAvailable: true,
+      isSeatAvailable: isSeatAvailable,
     });
   } catch (err) {
     console.error("Error fetching flight:", err);

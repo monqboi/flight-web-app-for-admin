@@ -91,7 +91,7 @@ onMounted(() => {
 
 <template>
   <div class="content report-page">
-    <h2 class="section-title">Analytics & Reports</h2>
+    <h1 class="section-title">Analytics & Reports</h1>
 
     <div class="report-grid">
       <!-- Time Charts -->
