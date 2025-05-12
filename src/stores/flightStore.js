@@ -109,6 +109,12 @@ export const useFlightStore = defineStore("flight", {
         console.error("Failed to delete flight:", error);
       }
     },
+    updateSeatFlightAvailability(flightID, isAvailable) {
+      const flight = this.flights.find(f => f.flightID === flightID);
+      if (flight) {
+        flight.isSeatAvailable = isAvailable;
+      }
+    },
 
     setSearchQuery(query) {
       this.searchQuery = query.trim().toLowerCase();

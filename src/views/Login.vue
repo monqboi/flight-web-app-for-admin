@@ -1,26 +1,38 @@
 <script setup>
-import { ref } from "vue";
-import { useRouter } from "vue-router";
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
-const router = useRouter();
-const username = ref('');
-const password = ref('');
-const errorMessage = ref('');
+const username = ref('')
+const password = ref('')
+const error = ref('')
+const router = useRouter()
 
-function handleLogin() {
+const login = async () => {
   if (!username.value || !password.value) {
-    errorMessage.value = "Please fill in both fields.";
-    return;
+    error.value = 'Please enter username and password'
+    return
   }
 
-  // Example: Hardcoded credentials for now
-  if (username.value === 'admin' && password.value === 'password123') {
-    router.push({ name: 'dashboard' });
-  } else {
-    errorMessage.value = "Invalid username or password.";
+  try {
+    const res = await axios.post('http://localhost:3000/api/auth/login', {
+      username: username.value,
+      password: password.value
+    })
+
+    // ✅ เก็บ token และ user info
+    localStorage.setItem('token', res.data.token)
+    localStorage.setItem('user', JSON.stringify(res.data.user))
+
+    // ✅ ไปหน้าหลัก
+    console.log('Login passed, redirecting...')
+    router.push('/dashboard')
+  } catch (err) {
+    error.value = err.response?.data?.error || 'Login failed'
   }
 }
 </script>
+
 
 <template>
   <div class="login-container">
@@ -56,9 +68,9 @@ function handleLogin() {
         </div>
       </div>
 
-      <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+      <div v-if="error" class="error-message">{{ error }}</div>
 
-      <button class="login-button" @click="handleLogin">
+      <button class="login-button" @click="login">
         Login Now
       </button>
 

@@ -1,79 +1,125 @@
 <script setup>
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import axios from 'axios'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { faUser, faLock, faIdCard, faEnvelope, faPhone } from "@fortawesome/free-solid-svg-icons";
 
 const router = useRouter();
-const username = ref('');
-const password = ref('');
-const firstname = ref('');
-const middlename = ref('');
-const lastname = ref('');
-const email = ref('');
-const phone = ref('');
-const errorMessage = ref('');
 
-const fields = [
-  { placeholder: "Username", type: "text", model: username, icon: faUser },
-  { placeholder: "Password", type: "password", model: password, icon: faLock },
-  { placeholder: "Firstname", type: "text", model: firstname, icon: faIdCard },
-  { placeholder: "Middlename", type: "text", model: middlename, icon: faIdCard },
-  { placeholder: "Lastname", type: "text", model: lastname, icon: faIdCard },
-  { placeholder: "Email", type: "email", model: email, icon: faEnvelope },
-  { placeholder: "Phone", type: "tel", model: phone, icon: faPhone },
-];
+const form = ref({
+  username: '',
+  password: '',
+  firstname: '',
+  middlename: '',
+  lastname: '',
+  email: '',
+  phone: ''
+})
 
-function handleSignup() {
-  if (!username.value || !password.value || !firstname.value || !lastname.value || !email.value || !phone.value) {
-    errorMessage.value = "Please fill in all required fields.";
-    return;
+const error = ref('')
+const success = ref('')
+
+const register = async () => {
+  error.value = ''
+  success.value = ''
+
+  if (!form.value.username || !form.value.password || !form.value.firstname || !form.value.email) {
+    error.value = 'Please fill in all required fields.'
+    return
   }
 
-  console.log("New user created:", {
-    username: username.value,
-    password: password.value,
-    firstname: firstname.value,
-    middlename: middlename.value,
-    lastname: lastname.value,
-    email: email.value,
-    phone: phone.value
-  });
+  try {
+    const res = await axios.post('http://localhost:3000/api/auth/register', form.value)
+    success.value = '✅ Registered successfully!'
+    console.log('User registered:', res.data)
 
-  router.push('/login');
+    // Optional: redirect to login page after success
+    setTimeout(() => {
+      router.push('/login')
+    }, 1500)
+
+  } catch (err) {
+    if (err.response?.status === 409) {
+      error.value = 'Username or Email already exists.'
+    } else {
+      error.value = 'Registration failed. Try again.'
+      console.error('Register error:', err)
+    }
+  }
 }
+
+
 </script>
 
 <template>
   <div class="signup-container">
     <div class="signup-form-container">
       <h1 class="signup-title">SIGN UP</h1>
-      <p class="signup-subtitle">How to i get started lorem ipsum dolor at?</p>
+      <p class="signup-subtitle">How do I get started? Lorem ipsum dolor sit amet.</p>
 
-      <div class="form-group" v-for="(field, index) in fields" :key="index">
+      <!-- Input Fields -->
+      <div class="form-group">
         <div class="input-with-icon">
-          <span class="icon">
-            <font-awesome-icon :icon="field.icon" />
-          </span>
-          <input
-            :type="field.type"
-            :placeholder="field.placeholder"
-            v-model="field.model.value"
-            class="input-field"
-          />
+          <span class="icon"><font-awesome-icon icon="user" /></span>
+          <input type="text" placeholder="Username" v-model="form.username" class="input-field" />
         </div>
       </div>
 
-      <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+      <div class="form-group">
+        <div class="input-with-icon">
+          <span class="icon"><font-awesome-icon icon="lock" /></span>
+          <input type="password" placeholder="Password" v-model="form.password" class="input-field" />
+        </div>
+      </div>
 
-      <button class="signup-button" @click="handleSignup">
-        Sign Up
-      </button>
+      <div class="form-group">
+        <div class="input-with-icon">
+          <span class="icon"><font-awesome-icon icon="user-tag" /></span>
+          <input type="text" placeholder="First name" v-model="form.firstname" class="input-field" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="input-with-icon">
+          <span class="icon"><font-awesome-icon icon="user-tag" /></span>
+          <input type="text" placeholder="Middle name" v-model="form.middlename" class="input-field" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="input-with-icon">
+          <span class="icon"><font-awesome-icon icon="user-tag" /></span>
+          <input type="text" placeholder="Last name" v-model="form.lastname" class="input-field" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="input-with-icon">
+          <span class="icon"><font-awesome-icon icon="envelope" /></span>
+          <input type="email" placeholder="Email" v-model="form.email" class="input-field" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <div class="input-with-icon">
+          <span class="icon"><font-awesome-icon icon="phone" /></span>
+          <input type="text" placeholder="Phone" v-model="form.phone" class="input-field" />
+        </div>
+      </div>
+
+      <!-- Feedback -->
+      <div v-if="error" class="error-message">{{ error }}</div>
+      <div v-if="success" class="success-message">{{ success }}</div>
+
+      <!-- Button -->
+      <button class="signup-button" @click="register">Sign Up</button>
     </div>
 
     <div class="image-container"></div>
   </div>
 </template>
+
 
 <style scoped>
 .signup-container {

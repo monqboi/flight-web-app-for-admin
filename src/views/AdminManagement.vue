@@ -27,17 +27,19 @@
           <div
             class="table-row"
             v-for="admin in filteredAdmins"
-            :key="admin.id"
+            :key="admin.UserID"
           >
           <div>
-            <img :src="admin.profile || '/src/assets/default-avatar.png'" alt="Profile" class="profile-img" />
+            <img :src="admin.ProfilePicture || '/src/assets/default-avatar.png'" alt="Profile" class="profile-img" />
           </div>
-            <div>{{ admin.name }}</div>
-            <div>{{ admin.email }}</div>
-            <div>{{ admin.role }}</div>
+            <div>
+              {{ admin.Firstname || admin.Username }} {{ admin.Lastname || '' }}
+            </div>
+            <div>{{ admin.Email }}</div>
+            <div>{{ admin.Role }}</div>
             <div>
               <font-awesome-icon icon="trash" 
-                @click="removeAdmin(admin.id)"
+                @click="removeAdmin(admin.UserID)"
                 class="delete-icon"
               />
             </div>
@@ -49,7 +51,7 @@
           <div class="modal-content">
             <h3>Add Admin</h3>
             <label>User ID</label>
-            <input type="text" v-model="newAdminId" />
+            <input type="number" v-model="newAdminId" />
             <label>Role</label>
             <select v-model="newAdminRole">
               <option disabled value="">Select Role</option>
@@ -69,58 +71,69 @@
       </main>
     </div>
   </template>
-  
-  <script setup>
-  import { ref, reactive, computed } from 'vue'
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import api from '@/utils/api'
 
-  // user info
-  const name  = ref(localStorage.getItem('adminName')  || 'Admin')
-  const email = ref(localStorage.getItem('adminEmail') || 'admin@example.com')
-  const role  = ref(localStorage.getItem('adminRole')  || 'Super Admin')
-  
-  // page state
-  const search    = ref('')
-  const showModal = ref(false)
-  const newAdminId   = ref('')
-  const newAdminRole = ref('')
-  
-  // data list
-  const admins = reactive([
-  { id: 1, name: 'Jane Doe',   email: 'jane@example.com',   role: 'Super Admin',   profile: '/src/assets/default-avatar.png' },
-  { id: 2, name: 'John Smith', email: 'john@example.com',   role: 'Flight Admin',  profile: '/src/assets/default-avatar.png' },
-  { id: 3, name: 'Emily Chen', email: 'emily@example.com',  role: 'User Admin',    profile: '/src/assets/default-avatar.png' },
-  { id: 4, name: 'Michael Lee',email: 'michael@example.com',role: 'Finance Admin', profile: '/src/assets/default-avatar.png' }
-]);
+const search = ref('')
+const admins = ref([])
+const showModal = ref(false)
+const newAdminId = ref('')
+const newAdminRole = ref('')
 
-  
-  const filteredAdmins = computed(() =>
-    admins.filter(a =>
-      a.name.toLowerCase().includes(search.value.toLowerCase())
-    )
-  )
-  
-  function logout() {
-    localStorage.clear()
-    window.location.href = '/index.html'
+const fetchAdmins = async () => {
+  try {
+    const res = await api.get('/admins')
+    admins.value = res.data
+
+  } catch (err) {
+    console.error('โหลดข้อมูลแอดมินล้มเหลว:', err)
   }
-  function removeAdmin(id) {
-    const idx = admins.findIndex(a=>a.id===id)
-    if (idx !== -1) admins.splice(idx,1)
+}
+
+const saveAdmin = async () => {
+  if (!newAdminId.value || !newAdminRole.value) {
+    alert('กรุณากรอกข้อมูลให้ครบ')
+    return
   }
-  function saveAdmin() {
-    if (!newAdminId.value || !newAdminRole.value) return
-    admins.push({
-      id: Date.now(),
-      name: `New Admin(${newAdminId.value})`,
-      email: `admin${newAdminId.value}@example.com`,
-      role: newAdminRole.value,
-      status: 'Offline'
+  try {
+    await api.post(`/admins/${newAdminId.value}`, {
+      role: newAdminRole.value
     })
+    await fetchAdmins()
+    showModal.value = false
     newAdminId.value = ''
     newAdminRole.value = ''
-    showModal.value = false
+  } catch (err) {
+    console.error('เพิ่มแอดมินล้มเหลว:', err)
+    alert('เพิ่มแอดมินไม่สำเร็จ')
   }
-  </script>
+}
+
+const removeAdmin = async (userId) => {
+  if (!confirm('ต้องการลบสิทธิ์แอดมินของผู้ใช้นี้หรือไม่?')) return
+  try {
+    await api.delete(`/admins/${userId}`)
+    await fetchAdmins()
+  } catch (err) {
+    console.error('ลบแอดมินล้มเหลว:', err)
+    alert('ลบแอดมินไม่สำเร็จ')
+  }
+}
+
+const filteredAdmins = computed(() => {
+  return admins.value.filter(admin => {
+    const name = `${admin.Firstname} ${admin.Lastname}`.toLowerCase()
+    return (
+      name.includes(search.value.toLowerCase()) ||
+      (admin.Email || '').toLowerCase().includes(search.value.toLowerCase()) ||
+      admin.Role.toLowerCase().includes(search.value.toLowerCase())
+    )
+  })
+})
+
+onMounted(fetchAdmins)
+</script>
   
   <style scoped>
   .layout { display: flex; min-height:100vh; }

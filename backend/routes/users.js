@@ -1,7 +1,6 @@
 import express from 'express';
 import db from '../db.js';
 import { verifyToken, allowRoles } from '../middleware/role.js';
-import bcrypt from 'bcryptjs';
 
 const router = express.Router();
 
@@ -15,17 +14,26 @@ router.get('/', verifyToken, allowRoles('superadmin', 'useradmin'), async (req, 
   }
 });
 
-// Get user by ID
-router.get('/:id', verifyToken, allowRoles('superadmin', 'useradmin'), async (req, res) => {
+
+// Get user by ID (self or admin)
+router.get('/:id', verifyToken, async (req, res) => {
+  const userId = Number(req.params.id);
+  const requesterId = req.user.UserID;
+  const role = req.user.role || req.user.Role; 
+
+  // if (!(requesterId === userId || ['superadmin', 'useradmin'].includes(role?.toLowerCase()))) {
+  //   return res.status(403).json({ error: 'Access denied' });
+  // }
+
   try {
-    const userId = req.params.id;
     const [result] = await db.query('SELECT * FROM User WHERE UserID = ?', [userId]);
     if (result.length === 0) return res.status(404).json({ error: 'User not found' });
     res.json(result[0]);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to load user' });
+    res.status(500).json({ error: 'Failed to load user', detail: err.message });
   }
 });
+
 
 // Update user info
 router.put('/:id', verifyToken, allowRoles('superadmin', 'useradmin'), async (req, res) => {
@@ -33,13 +41,22 @@ router.put('/:id', verifyToken, allowRoles('superadmin', 'useradmin'), async (re
   const {
     username, password, firstname, middlename,
     lastname, email, phone, profilePicture
-  } = req.body;
+  } = {
+    username: req.body.username ?? req.body.Username,
+    password: req.body.password ?? req.body.Password,
+    firstname: req.body.firstname ?? req.body.Firstname,
+    middlename: req.body.middlename ?? req.body.Middlename,
+    lastname: req.body.lastname ?? req.body.Lastname,
+    email: req.body.email ?? req.body.Email,
+    phone: req.body.phone ?? req.body.Phone,
+    profilePicture: req.body.profilePicture ?? req.body.ProfilePicture,
+  }
 
   try {
     let sql, values;
 
     if (password) {
-      const hashedPassword = await bcrypt.hash(password, 10);
+
       sql = `
         UPDATE User SET
           Username = ?, Password = ?, Firstname = ?, Middlename = ?, Lastname = ?,
@@ -47,7 +64,7 @@ router.put('/:id', verifyToken, allowRoles('superadmin', 'useradmin'), async (re
         WHERE UserID = ?
       `;
       values = [
-        username, hashedPassword, firstname, middlename || '', lastname || '',
+        username, password, firstname, middlename || '', lastname || '',
         email, phone || '', profilePicture || '', userId
       ];
     } else {
@@ -73,21 +90,24 @@ router.put('/:id', verifyToken, allowRoles('superadmin', 'useradmin'), async (re
 
 // Upload profile image
 router.post('/:id/profile', verifyToken, allowRoles('superadmin', 'useradmin'), async (req, res) => {
-  const userId = req.params.id;
-  const { imageUrl } = req.body;
+  const userId = req.params.id
+  const { imageUrl } = req.body
 
-  if (!imageUrl) return res.status(400).json({ error: 'Missing imageUrl' });
+  if (!imageUrl) {
+    return res.status(400).json({ error: 'Missing imageUrl' })
+  }
 
   try {
-    await db.query('UPDATE User SET ProfilePicture = ? WHERE UserID = ?', [imageUrl, userId]);
-    res.json({ message: 'Profile updated', imageUrl });
+    await db.query('UPDATE User SET ProfilePicture = ? WHERE UserID = ?', [imageUrl, userId])
+    res.json({ message: 'Profile updated', imageUrl })
   } catch (err) {
-    res.status(500).json({ error: 'Image upload failed' });
+    res.status(500).json({ error: 'Image upload failed' })
   }
-});
+})
+
 
 // Get user's booking history
-router.get('/:id/bookings', verifyToken, allowRoles('superadmin', 'flightadmin'), async (req, res) => {
+router.get('/:id/bookings', verifyToken, allowRoles('superadmin', 'flightadmin', 'useradmin'), async (req, res) => {
   const userId = req.params.id;
 
   const sql = `
@@ -97,10 +117,9 @@ router.get('/:id/bookings', verifyToken, allowRoles('superadmin', 'flightadmin')
       f.Destination AS to_location,
       f.DepartureDateTime AS depart,
       f.ArrivalDateTime AS arrive,
-      TIMESTAMPDIFF(MINUTE, f.DepartureDateTime, f.ArrivalDateTime) AS duration,
-      f.StopOver AS stops
+      TIMESTAMPDIFF(MINUTE, f.DepartureDateTime, f.ArrivalDateTime) AS duration
     FROM Reservation r
-    JOIN Flight f ON r.FlightID = f.FlightID
+    LEFT JOIN Flight f ON r.FlightID = f.FlightID
     WHERE r.UserID = ?
   `;
 
@@ -113,7 +132,7 @@ router.get('/:id/bookings', verifyToken, allowRoles('superadmin', 'flightadmin')
 });
 
 // Get user's payment history
-router.get('/:id/payments', verifyToken, allowRoles('superadmin', 'financeadmin'), async (req, res) => {
+router.get('/:id/payments', verifyToken, allowRoles('superadmin', 'financeadmin', 'useradmin'), async (req, res) => {
   const userId = req.params.id;
 
   const sql = `
@@ -137,6 +156,23 @@ router.get('/:id/payments', verifyToken, allowRoles('superadmin', 'financeadmin'
   }
 });
 
+// PATCH: update UserStatus
+router.patch('/:id/status', verifyToken, allowRoles('superadmin', 'useradmin'), async (req, res) => {
+  const userId = req.params.id
+  const { status } = req.body
+
+  if (!['Active', 'Suspended'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status value' })
+  }
+
+  try {
+    await db.query('UPDATE User SET UserStatus = ? WHERE UserID = ?', [status, userId])
+    res.json({ message: 'User status updated successfully' })
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update user status', detail: err.message })
+  }
+})
+
 // Add new user (by Admin panel)
 router.post('/', verifyToken, allowRoles('superadmin', 'useradmin'), async (req, res) => {
   const { username, password, firstname, middlename, lastname, email, phone } = req.body;
@@ -146,14 +182,14 @@ router.post('/', verifyToken, allowRoles('superadmin', 'useradmin'), async (req,
   }
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+
     const sql = `
       INSERT INTO User (Username, Password, Firstname, Middlename, Lastname, Email, Phone)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     const [result] = await db.query(
       sql,
-      [username, hashedPassword, firstname, middlename || '', lastname || '', email, phone || '']
+      [username, password, firstname, middlename  || '', lastname || '', email, phone || '']
     );
     res.json({ message: 'User added successfully', userId: result.insertId });
   } catch (err) {
@@ -163,5 +199,29 @@ router.post('/', verifyToken, allowRoles('superadmin', 'useradmin'), async (req,
     res.status(500).json({ error: 'Server error', detail: err.message });
   }
 });
+
+router.delete('/:id', verifyToken, allowRoles('superadmin', 'useradmin'), async (req, res) => {
+  const userId = req.params.id;
+
+  try {
+    // ตรวจสอบก่อนว่าผู้ใช้มี role หรือไม่
+    const [adminCheck] = await db.query('SELECT * FROM Admin WHERE UserID = ?', [userId]);
+    if (adminCheck.length > 0) {
+      await db.query('DELETE FROM Admin WHERE UserID = ?', [userId]);
+    }
+
+    // ลบ user ต่อ
+    const [result] = await db.query('DELETE FROM User WHERE UserID = ?', [userId]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ message: 'User and admin role deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete user', detail: err.message });
+  }
+});
+
 
 export default router;

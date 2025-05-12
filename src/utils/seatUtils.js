@@ -28,5 +28,6 @@ export const getUniqueRows = (seats) => {
 };
 
 export const formatSeatId = (rowNum, col) => {
-  return col + rowNum.padStart(2, "0");
+  return col + rowNum.toString().padStart(2, "0");
 };
+

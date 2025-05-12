@@ -13,6 +13,8 @@ router.get('/', verifyToken, allowRoles('superadmin'), async (req, res) => {
         u.Username,
         u.Firstname,
         u.Lastname,
+        u.Email,
+        u.ProfilePicture,  
         a.Role
       FROM Admin a
       JOIN User u ON a.UserID = u.UserID
@@ -38,8 +40,8 @@ router.post('/:userId', verifyToken, allowRoles('superadmin'), async (req, res) 
     if (existing.length > 0) {
       return res.status(400).json({ error: 'User is already an admin' });
     }
-
-    await db.query('INSERT INTO Admin (UserID, Role) VALUES (?, ?)', [userId, role]);
+    const normalizedRole = role.trim().toLowerCase().replace(/\s/g, '');
+    await db.query('INSERT INTO Admin (UserID, Role) VALUES (?, ?)', [userId,normalizedRole]);
     res.json({ message: 'Admin added successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Add admin failed', detail: err });

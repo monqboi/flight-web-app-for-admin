@@ -6,7 +6,6 @@ import { useSeatStore } from "@/stores/seatStore";
 import { useFlightStore } from "@/stores/flightStore";
 import Dropdown from "@/components/Dropdown.vue";
 import { useRouter, useRoute } from "vue-router";
-import { seatDataInfo } from "@/data/management-seat.js";
 import {
   getUniqueRows,
   getSeatStatus,
@@ -14,29 +13,40 @@ import {
   isSeatAvailable,
   formatSeatId,
 } from "@/utils/seatUtils.js";
+import axios from "axios";
 
-onMounted(() => {
-  seatStore.loadSeats();
-  flightStore.loadFlights();
-  document.addEventListener("click", handleClickOutside);
-  seatStore.setSearchQuery("");
-});
-
-onUnmounted(() => {
-  document.removeEventListener("click", handleClickOutside);
-});
 
 const router = useRouter();
 const route = useRoute();
 
-const flightID = Number(route.params.flightID);
-
+const flightID = Number(route.params.flightID); 
 const selectedClassTypeId = ref("economy");
 const isStatusDropdownOpen = ref(false);
 const isEditPassengerSeat = ref(false);
 const editAreaRef = ref(null);
 const seatStore = useSeatStore();
 const flightStore = useFlightStore();
+const showAddModal = ref(false);
+const newSeatForm = ref({
+  seatNumber: "",
+  seatClass: "Economy",
+  available: "Yes",
+  checkInStatus: "No",
+});
+const capitalizeClass = (str) => {
+  if (!str) return "";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+
+
+const seatClassTypes = [
+  { id: "economy", name: "Economy" },
+  { id: "business", name: "Business" },
+  { id: "first-class", name: "First Class" }
+];
+
+const seatColumns = ["A", "B", "C", "", "D", "E", "F", "", "G", "H", "I"];
 
 const selectedFlightForm = ref({
   flightID: flightID,
@@ -52,10 +62,111 @@ const selectedFlightForm = ref({
     date: "",
   },
 });
+const showEditModal = ref(false);
+const editSeatForm = ref({
+  seatNumber: "",
+  seatClass: "Economy",
+  available: "Yes",
+  checkInStatus: "No",
+});
+
+const openEditSeat = (seat) => {
+  editSeatForm.value = {
+    seatNumber: seat.seatID,
+    seatClass: capitalizeClass(seat.seatClass),
+    available: seat.availability === "available" ? "Yes" : "No",
+    checkInStatus: seat.isCheckedIn ? "Yes" : "No",  
+  };
+  showEditModal.value = true;
+};
+
+
+const saveEditSeat = async () => {
+  const token = localStorage.getItem("token");
+  try {
+    await axios.put(`/api/seats/${editSeatForm.value.seatNumber}`, {
+      SeatClass: editSeatForm.value.seatClass,
+      Available: editSeatForm.value.available,
+      CheckinStatus: editSeatForm.value.checkInStatus,
+      FlightID: flightID,
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    
+    await seatStore.loadSeatsFromAPI(flightID);
+
+    // Reset modal and selection
+    showEditModal.value = false;
+    selectedPassengerSeat.value = null;
+  } catch (err) {
+    console.error("Update seat failed:", err);
+  }
+};
+const showDeleteConfirm = ref(false);
+
+const deleteSeat = async () => {
+  const token = localStorage.getItem("token");
+  try {
+    await axios.delete(`/api/seats/${editSeatForm.value.seatNumber}`, {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { FlightID: flightID },
+    });
+    await seatStore.loadSeatsFromAPI(flightID);
+    showDeleteConfirm.value = false;
+    showEditModal.value = false;
+  } catch (err) {
+    console.error("Delete seat failed:", err);
+  }
+};
+
 
 const selectedPassengerSeat = ref(null);
+const addSeat = async () => {
+  const token = localStorage.getItem("token");
+  try {
+    await axios.post("/api/seats", {
+      SeatNumber: newSeatForm.value.seatNumber,
+      SeatClass: newSeatForm.value.seatClass,
+      Available: newSeatForm.value.available,
+      CheckinStatus: newSeatForm.value.checkInStatus,
+      FlightID: flightID,
+    }, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
 
-// ดูการเปลี่ยนเเปลงของ flightID เเล้วอัพเดทใน selectedFlightForm เป็นข้อมูลของ flightID นั้นๆ
+    await seatStore.loadSeatsFromAPI(flightID);
+    showAddModal.value = false;
+
+    newSeatForm.value = {
+      seatNumber: "",
+      seatClass: "Economy",
+      available: "Yes",
+      checkInStatus: "No",
+    };
+
+  } catch (err) {
+    console.error("Add seat failed:", err);
+  }
+};
+
+
+onMounted(async () => {
+  await flightStore.loadFlights();
+  await seatStore.loadSeatsFromAPI(flightID);
+  document.addEventListener("click", handleClickOutside);
+  seatStore.setSearchQuery("");
+
+  console.log("🧠 selectedClassTypeId:", selectedClassTypeId.value);
+  console.log("🎯 economy seats:", seatStore.getEconomySeatsByFlightId(flightID));
+  console.log("🎯 business seats:", seatStore.getBusinessSeatsByFlightId(flightID));
+  console.log("🎯 first-class seats:", seatStore.getFirstClassSeatsByFlightId(flightID));
+});
+
+onUnmounted(() => {
+  document.removeEventListener("click", handleClickOutside);
+});
+
 watch(
   () => flightStore.getFlightByID(flightID),
   (flight) => {
@@ -72,7 +183,6 @@ watch(
   { immediate: true }
 );
 
-// ดูการเปลี่ยนแปลงของ seat availability flight เเล้วอัพเดทใน flightStore
 watch(
   () => selectedFlightForm.value.isSeatAvailable,
   (newStatus, oldStatus) => {
@@ -85,34 +195,12 @@ watch(
   }
 );
 
-// ดูการเปลี่ยนแปลงของ seat check-in status เเล้วอัพเดทใน seatStore
-const originalCheckedInStatus = ref(null);
 
-watch(isEditPassengerSeat, (isEditing) => {
-  const seat = selectedPassengerSeat.value;
-  const currentStatus = seat?.isCheckedIn;
-
-  if (isEditing) {
-    originalCheckedInStatus.value = currentStatus;
-    return;
-  }
-
-  if (
-    seat &&
-    originalCheckedInStatus.value !== null &&
-    currentStatus !== originalCheckedInStatus.value
-  ) {
-    seatStore.updateSeatCheckInStatus(
-      flightID,
-      seat.seatID,
-      seat.seatClass,
-      currentStatus
-    );
-  }
-});
 
 const economySeatData = computed(() => {
   return seatStore.getEconomySeatsByFlightId(flightID);
+  console.log("✅ economySeatData:", result.map(s => s.seatID));
+  return result;
 });
 
 const businessSeatData = computed(() => {
@@ -160,11 +248,6 @@ const clearSelectedSeat = () => {
   isEditPassengerSeat.value = false;
 };
 
-const editPassengerSeat = (event) => {
-  event?.stopPropagation();
-  isEditPassengerSeat.value = !isEditPassengerSeat.value;
-};
-
 const selectSeat = (rowNum, col) => {
   isEditPassengerSeat.value = false;
 
@@ -177,9 +260,7 @@ const selectSeat = (rowNum, col) => {
 
   if (!seat) return;
 
-  if (seat.availability === "available") return;
-
-  if (selectedPassengerSeat.value?.seatID === seat.seatID) {
+if (selectedPassengerSeat.value?.seatID === seat.seatID) {
     selectedPassengerSeat.value = null;
   } else {
     selectedPassengerSeat.value = seat;
@@ -347,21 +428,8 @@ const clearSearch = () => {
             class="search-input"
           />
         </div>
-        <div class="status-selector">
-          <Dropdown
-            v-model="selectedFlightForm.isSeatAvailable"
-            :statusOptions="statusOptionsAllSeats"
-          >
-            <template #trigger="{ selected }">
-              <span
-                v-if="selected"
-                :class="['badge', selected?.class?.toLowerCase()]"
-              >
-                {{ selected.label || selectedFlightForm.isSeatAvailable }}
-              </span>
-            </template>
-          </Dropdown>
-        </div>
+        <!-- ด้านใน #header-right -->
+        <button class="btn-add-seat" @click="showAddModal = true">+ Add Seat</button>
       </div>
     </template>
 
@@ -380,15 +448,11 @@ const clearSearch = () => {
                 <div>
                   Seat <strong>{{ selectedPassengerSeat.seatID }}</strong>
                 </div>
-                <button
-                  class="edit-btn"
-                  :class="{ active: isEditPassengerSeat }"
-                  @click="editPassengerSeat"
-                >
-                  {{ isEditPassengerSeat ? "Save" : "Edit" }}
+                <button class="edit-btn" @click="openEditSeat(selectedPassengerSeat)">
+                  Edit
                 </button>
               </template>
-              <template v-else> Select Your Seat </template>
+              <template v-else> Select Seat </template>
             </div>
 
             <div class="select-seat-content">
@@ -402,23 +466,6 @@ const clearSearch = () => {
                         : "Not Checked In"
                     }}
                   </span>
-                  <Dropdown
-                    class="status-dropdow-edit"
-                    v-else
-                    v-model="selectedPassengerSeat.isCheckedIn"
-                    :statusOptions="statusOptionsSeat"
-                  >
-                    <template #trigger="{ selected }">
-                      <span :class="['badge', selected?.class]">
-                        {{
-                          selected?.label ||
-                          (selectedPassengerSeat.isCheckedIn
-                            ? "Checked In"
-                            : "Not Checked In")
-                        }}
-                      </span>
-                    </template>
-                  </Dropdown>
                 </div>
               </template>
               <template v-else>
@@ -462,7 +509,7 @@ const clearSearch = () => {
           <div class="seat-view">
             <div class="seat-class-types">
               <div
-                v-for="classType in seatDataInfo.classTypes"
+                v-for="classType in seatClassTypes"                
                 :key="classType.id"
                 :class="{ active: selectedClassTypeId === classType.id }"
                 @click="selectClassType(classType.id)"
@@ -475,7 +522,7 @@ const clearSearch = () => {
               <div class="seat-columns">
                 <div
                   class="column-header"
-                  v-for="col in seatDataInfo.columns"
+                  v-for="col in seatColumns"
                   :key="'header-' + col"
                   :class="{ spacer: col === '' }"
                 >
@@ -488,38 +535,26 @@ const clearSearch = () => {
 
                 <div class="seat-grid-row">
                   <div
-                    v-for="col in seatDataInfo.columns"
+                    v-for="col in seatColumns"
                     :key="`${rowNum}-${col || 'spacer'}`"
                     class="seat-container"
                   >
+                    <!-- ✅ แสดงเฉพาะเก้าอี้ที่มีอยู่จริง -->
                     <div
-                      v-if="col !== ''"
+                      v-if="col !== '' && seatsByClass.find(seat => seat.seatID === formatSeatId(rowNum, col))"
                       class="seat"
-                      :class="
-                        getSeatStatus(seatsByClass, formatSeatId(rowNum, col))
-                      "
-                      :title="
-                        getSeatInfo(seatsByClass, formatSeatId(rowNum, col))
-                      "
+                      :class="getSeatStatus(seatsByClass, formatSeatId(rowNum, col))"
+                      :title="getSeatInfo(seatsByClass, formatSeatId(rowNum, col))"
                       @click="selectSeat(rowNum, col)"
                     >
                       <div class="seat-icon">
                         <img
-                          v-if="
-                            isSeatAvailable(
-                              seatsByClass,
-                              formatSeatId(rowNum, col)
-                            )
-                          "
+                          v-if="isSeatAvailable(seatsByClass, formatSeatId(rowNum, col))"
                           src="/management-pic/management-seat/unreserve-seat-type.png"
                           alt="Unreserved Seat"
                         />
                         <img
-                          v-else-if="
-                            selectedPassengerSeat &&
-                            selectedPassengerSeat.seatID ===
-                              formatSeatId(rowNum, col)
-                          "
+                          v-else-if="selectedPassengerSeat?.seatID === formatSeatId(rowNum, col)"
                           src="/management-pic/management-seat/passenger-seat-type.png"
                           alt="Passenger Seat"
                         />
@@ -530,17 +565,96 @@ const clearSearch = () => {
                         />
                       </div>
                     </div>
+
+                    <!-- ❌ ไม่มีเก้าอี้: ไม่แสดง -->
                   </div>
                 </div>
 
                 <div class="row-header">{{ rowNum }}</div>
               </div>
             </div>
+
           </div>
         </div>
       </div>
     </template>
+
   </ManagementOverview>
+  <template v-if="showAddModal">
+      <div class="modal-overlay">
+        <div class="modal-content">
+          <h3>Add New Seat</h3>
+
+          <label>Seat Number</label>
+          <input v-model="newSeatForm.seatNumber" placeholder="e.g. B05" />
+
+          <label>Seat Class</label>
+          <select v-model="newSeatForm.seatClass">
+            <option>Economy</option>
+            <option>Business</option>
+            <option>FirstClass</option>
+          </select>
+
+          <label>Available</label>
+          <select v-model="newSeatForm.available">
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+
+          <label>Check-In Status</label>
+          <select v-model="newSeatForm.checkInStatus">
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+
+          <button @click="addSeat">Confirm</button>
+          <button @click="showAddModal = false">Cancel</button>
+        </div>
+      </div>
+    </template>
+    <template v-if="showEditModal">
+      <div class="modal-overlay">
+        <div class="modal-content">
+          <h3>Edit Seat</h3>
+
+          <label>Seat Number</label>
+          <input v-model="editSeatForm.seatNumber" disabled />
+
+          <label>Seat Class</label>
+          <select v-model="editSeatForm.seatClass">
+            <option>Economy</option>
+            <option>Business</option>
+            <option>FirstClass</option>
+          </select>
+
+          <label>Available</label>
+          <select v-model="editSeatForm.available">
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+
+          <label>Check-In Status</label>
+          <select v-model="editSeatForm.checkInStatus">
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+          <button class="btn-delete" @click="showDeleteConfirm = true">Delete</button>
+          <button @click="saveEditSeat">Save</button>
+          <button @click="showEditModal = false">Cancel</button>
+        </div>
+      </div>
+    </template>
+    <template v-if="showDeleteConfirm">
+      <div class="modal-overlay">
+        <div class="modal-content warning">
+          <h3>Confirm Deletion</h3>
+          <p>Are you sure you want to delete seat {{ editSeatForm.seatNumber }}?</p>
+          <button @click="deleteSeat">Yes, Delete</button>
+          <button @click="showDeleteConfirm = false">Cancel</button>
+        </div>
+      </div>
+    </template>
+
 </template>
 
 <style scoped>
@@ -1021,4 +1135,121 @@ const clearSearch = () => {
 .right-notches .notch {
   transform: translateX(50%);
 }
+
+.btn-add-seat {
+  padding: 6px 16px;
+  border: 1px solid #397499;
+  background-color: white;
+  color: #397499;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 10px;
+  width: 320px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-content label {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.modal-content input,
+.modal-content select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.modal-content button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.modal-content button:first-of-type {
+  background-color: #3e7ca3;
+  color: white;
+}
+
+.modal-content button:last-of-type {
+  background-color: #ccc;
+  color: #333;
+}
+
+/* --- Delete Button --- */
+.btn-delete {
+  background-color: #e74c3c; /* red */
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  margin-top: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.btn-delete:hover {
+  background-color: #c0392b;
+}
+
+/* --- Confirmation Modal --- */
+.modal-content.warning {
+  border: 2px solid #e74c3c;
+  background-color: #fff6f6;
+}
+
+.modal-content.warning h3 {
+  color: #e74c3c;
+}
+
+.modal-content.warning p {
+  margin-top: 0.5rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+/* Optional: Style Yes/Cancel buttons */
+.modal-content.warning button {
+  margin: 0 0.5rem;
+  padding: 0.4rem 1rem;
+  border-radius: 6px;
+  font-weight: bold;
+  border: none;
+  cursor: pointer;
+}
+
+.modal-content.warning button:first-of-type {
+  background-color: #e74c3c;
+  color: white;
+}
+
+.modal-content.warning button:last-of-type {
+  background-color: #ddd;
+  color: #333;
+}
+
 </style>

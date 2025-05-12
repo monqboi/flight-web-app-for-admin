@@ -1,5 +1,4 @@
 import express from 'express';
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import db from '../db.js';
 
@@ -15,14 +14,13 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
-
+  
     const sql = `
       INSERT INTO User (Username, Password, Firstname, Middlename, Lastname, Email, Phone)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     const [result] = await db.query(sql, [
-      username, hashedPassword,
+      username, password,
       firstname, middlename || '',
       lastname || '', email, phone || ''
     ]);
@@ -67,7 +65,7 @@ router.post('/login', async (req, res) => {
     console.log("User from DB:", user);
     console.log("Password from request:", password);
 
-    const isMatch = await bcrypt.compare(password, user.Password);
+    const isMatch = password === user.Password;
     console.log("Password match:", isMatch);
 
     if (!isMatch) {
@@ -82,7 +80,16 @@ router.post('/login', async (req, res) => {
     );
 
     console.log("Login success:", username);
-    return res.json({ message: 'Login successful', token });
+    return res.json({
+      message: 'Login successful',
+      token,
+      user: {
+        userId: user.UserID,
+        role: user.Role,
+        username: username
+      }
+    });
+
   } catch (err) {
     console.error("Unexpected error:", err);
     return res.status(500).json({ error: 'Unexpected server error', detail: err.message });
