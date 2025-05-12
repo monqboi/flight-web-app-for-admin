@@ -195,9 +195,9 @@ function discardPayment() {
     <!-- Payment Table -->
     <div class="table-section payments">
       <div class="table-row table-head">
-        <div>Payment ID</div>
+        <div>PaymentID</div>
         <div>User</div>
-        <div>Reservation ID</div>
+        <div>ReserveID</div>
         <div>Route</div>
         <div>Date</div>
         <div>Amount</div>
@@ -420,11 +420,11 @@ function discardPayment() {
 .table-row {
   display: grid;
   grid-template-columns:
-    minmax(80px, 1.5fr)   /* Payment ID */
-    minmax(80px, 1.2fr)  /* User */
+    minmax(80px, 1.3fr)   /* Payment ID */
+    minmax(80px, 2.5fr)  /* User */
     minmax(100px, 1.5fr)/* Reservation ID */
-    minmax(180px, 3fr)  /* Route */
-    minmax(140px, 2fr)  /* Date */
+    minmax(180px, 2.5fr)  /* Route */
+    minmax(140px, 2.5fr)  /* Date */
     minmax(100px, 1.5fr)/* Amount */
     minmax(100px, 1.5fr)/* Status */
     minmax(80px, 1fr);  /* Actions */
@@ -440,11 +440,11 @@ function discardPayment() {
 .table-head {
   display: grid;
   grid-template-columns:
-    minmax(80px, 1.5fr)  /* Payment ID */
-    minmax(80px, 1.2fr) /* User */
-    minmax(100px, 1.5fr)/* Reservation ID */
-    minmax(180px, 3fr)  /* Route */
-    minmax(140px, 2fr)  /* Date */
+    minmax(80px, 1.3fr)   /* Payment ID */
+    minmax(80px, 2.3fr)  /* User */
+    minmax(100px, 1.8fr)/* Reservation ID */
+    minmax(180px, 2.5fr)  /* Route */
+    minmax(140px, 2.5fr)  /* Date */
     minmax(100px, 1.5fr)/* Amount */
     minmax(100px, 1.5fr)/* Status */
     minmax(80px, 1fr);  /* Actions */

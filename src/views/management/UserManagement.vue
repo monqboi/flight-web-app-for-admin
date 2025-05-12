@@ -578,7 +578,7 @@ color: white;
 
 .table-row {
   display: grid;
-  grid-template-columns: 1.5fr 1.5fr 2fr 1.5fr 2fr 3fr 1.5fr;
+  grid-template-columns: 1.3fr 1fr 2.5fr 1.3fr 2.5fr 3.5fr 1.5fr;
   padding: 16px 24px;
   align-items: center;
   background: #fff;

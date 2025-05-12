@@ -1,5 +1,11 @@
-import bcrypt from 'bcryptjs';
+const rows = 6;
+const columns = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'];
 
-const plainPassword = 'superadmin123';
-const hashed = await bcrypt.hash(plainPassword, 10);
-console.log(hashed);
+let output = '';
+
+for (let row = 1; row <= rows; row++) {
+  const rowSeats = columns.map(col => `${col}${row.toString().padStart(2, '0')}`);
+  output += rowSeats.join(' ') + '\n';
+}
+
+console.log(output);

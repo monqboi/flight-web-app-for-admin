@@ -163,11 +163,11 @@ onMounted(fetchAdmins)
     font-weight: bold;
     background: #f5f5f5;
     border-bottom: 2px solid #ddd;
-    grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr 1fr;
+    grid-template-columns: 1fr 2fr 3fr 1.5fr 1fr;
   }
 
   .admins .table-row {
-    grid-template-columns: 1fr 1.5fr 1.5fr 1.5fr 1fr;
+    grid-template-columns: 1fr 2fr 3fr 1.5fr 1fr;
   }
 
   .status {
