@@ -15,7 +15,7 @@ const timeCharts = reactive([
 const topCharts = reactive([
   { id: 'behaviorChart', title: 'Customer Booking Behavior',       top: '10' },
   { id: 'frequentChart', title: 'Top Customers', top: '10' },
-  { id: 'cancelChart',   title: 'Flights with Cancels > Avg',      top: '10' },
+  { id: 'cancelChart',   title: 'Airlines with Cancels > Avg',      top: '10' },
   { id: 'priceChart',    title: 'Most Expensive Ticket Price',     top: '10' }
 ])
 const lastUpdatedMap = reactive({})
@@ -34,7 +34,7 @@ async function fetchTopChart(chartId, top) {
   const map = {
     behaviorChart: 'top-destinations',
     frequentChart: 'top-customers',
-    cancelChart: 'cancel-heavy-flights',
+    cancelChart: 'cancel-heavy-airlines',
     priceChart: 'expensive-destinations'
   }
   const res = await axios.get(`/api/report/${map[chartId]}?top=${top}`)

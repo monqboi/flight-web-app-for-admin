@@ -304,6 +304,7 @@
       :formMode="formMode"
       :showModal="isShowModal"
       :selectedAircraftID="selectedAircraftID"
+      :airlineID="airlineID"
       @close="isShowModal = false"
       @addAircraft="addAircraft"
       @editAircraft="editAircraft"

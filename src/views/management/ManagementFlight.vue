@@ -888,8 +888,8 @@
 }
 
 .status-completed {
-  background-color: var(--c-soft-blue);
-  color: var(--c-navy-light);
+  background-color: #36be5d;
+  color: #ffffff;
 }
 
 .status-canceled {
@@ -900,6 +900,11 @@
 .status-delayed {
   background-color: var(--c-soft-orange);
   color: var(--c-light-orange);
+}
+
+.status-scheduled {
+  background-color: var(--c-soft-blue);
+  color: var(--c-navy-light);
 }
 
 /* Action Button Styling */

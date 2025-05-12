@@ -7,8 +7,17 @@ const router = express.Router();
 
 // Get all Aircrafts
 router.get("/", async (req, res) => {
+  const airlineID = req.query.airlineID;
   try {
-    const [rows] = await db.query("SELECT * FROM Aircraft");
+    let query = "SELECT * FROM Aircraft";
+    let params = [];
+
+    if (airlineID) {
+      query += " WHERE AirlineID = ?";
+      params.push(airlineID);
+    }
+
+    const [rows] = await db.query(query, params);
     res.json(rows);
   } catch (err) {
     console.error("Error retrieving aircraft:", err);

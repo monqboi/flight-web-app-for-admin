@@ -95,7 +95,11 @@ export const useFlightStore = defineStore("flight", {
         });
 
         const index = this.flights.findIndex(f => f.flightID === flightID);
-        if (index !== -1) this.flights[index] = { ...updatedFlight, flightID };
+        if (index !== -1) this.flights[index] = { ...
+          updatedFlight, 
+          flightID, 
+          isSeatAvailable: original.isSeatAvailable ?? true
+        };
       } catch (error) {
         console.error("Failed to update flight:", error);
       }

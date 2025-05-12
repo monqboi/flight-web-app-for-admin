@@ -99,34 +99,41 @@ router.get('/top-customers', async (req, res) => {
   }
 });
 
-// Flights with More Cancellations than Average
-router.get('/cancel-heavy-flights', async (req, res) => {
+// Airlines with More Cancellations than Average
+router.get('/cancel-heavy-airlines', async (req, res) => {
   const top = parseInt(req.query.top) || 10;
-  try {
-    const [[{ avgCancel }]] = await db.query(
-      `SELECT AVG(cnt) AS avgCancel FROM (
-         SELECT COUNT(*) AS cnt FROM Flight
-         WHERE Status = 'Cancelled'
-         GROUP BY FlightID
-       ) AS sub`
-    );
 
-    const [rows] = await db.query(
-      `SELECT FlightID AS label, COUNT(*) AS value
-       FROM Flight
-       WHERE Status = 'Cancelled'
-       GROUP BY FlightID
-       HAVING value > ?
-       ORDER BY value DESC
-       LIMIT ?`,
-      [avgCancel, top]
-    );
+  try {
+    // Calculate average cancellations per airline
+    const [[{ avgCancel }]] = await db.query(`
+      SELECT AVG(cancelCount) AS avgCancel FROM (
+        SELECT COUNT(*) AS cancelCount
+        FROM Flight
+        WHERE Status = 'Canceled'
+        GROUP BY AirlineID
+      ) AS sub
+    `);
+
+    // Get airlines with more cancellations than average
+    const [rows] = await db.query(`
+      SELECT 
+        a.Name AS label,
+        COUNT(*) AS value
+      FROM Flight f
+      JOIN Airline a ON f.AirlineID = a.AirlineID
+      WHERE f.Status = 'Canceled'
+      GROUP BY f.AirlineID
+      HAVING value > ?
+      ORDER BY value DESC
+      LIMIT ?
+    `, [avgCancel, top]);
+
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch cancel-heavy flights' });
+    console.error("❌ Error fetching cancel-heavy airlines:", err);
+    res.status(500).json({ error: 'Failed to fetch cancel-heavy airlines' });
   }
 });
-
 // Most Expensive Ticket per Destination
 router.get('/expensive-destinations', async (req, res) => {
   const top = parseInt(req.query.top) || 10;

@@ -172,8 +172,8 @@ const selectedOption = computed(() => {
 }
 
 .status-option.completed span {
-  background-color: var(--c-soft-blue);
-  color: var(--c-navy-light);
+  background-color: #36be5d;
+  color: #ffffff;
 }
 
 .status-option.canceled span {
@@ -184,6 +184,11 @@ const selectedOption = computed(() => {
 .status-option.delayed span {
   background-color: var(--c-soft-orange);
   color: var(--c-light-orange);
+}
+
+.status-option.scheduled span {
+  background-color: var(--c-soft-blue);
+  color: var(--c-navy-light);
 }
 
 .status-option.open span {
@@ -235,12 +240,12 @@ const selectedOption = computed(() => {
   color: var(--c-orange);
 }
 :deep(.badge.scheduled) {
-  background-color: var(--c-light-orange);
-  color: #8ae3a3;
-}
-:deep(.badge.completed) {
   background-color: var(--c-soft-blue);
   color: var(--c-navy-light);
+}
+:deep(.badge.completed) {
+  background-color: #36be5d;
+  color: #ffffff;
 }
 :deep(.badge.canceled) {
   background-color: var(--c-dark-navy);

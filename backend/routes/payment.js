@@ -1,7 +1,13 @@
 import express from "express";
 import db from "../db.js";
+import { faSortAmountAsc } from "@fortawesome/free-solid-svg-icons";
 
 const router = express.Router();
+
+function normalizePaymentMethod(method) {
+  if (!method) return null;
+  return method.replace(/\s+/g, ""); // Remove all whitespace
+}
 
 // ------------- Payment -------------
 /*

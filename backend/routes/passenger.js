@@ -46,28 +46,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-/* Add new passenger
-router.post("/", async (req, res) => {
-  const {
-    reservationId, seatID, firstName, middleName, lastName, birth,
-    nationality, passport, address
-  } = req.body;
-
-  try {
-    const [result] = await db.query(`
-      INSERT INTO Passenger 
-      (ReservationID, SeatID, Firstname, Middlename, Lastname, BirthDate, Nationality, PassportNumber, Address)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [reservationId, seatID, firstName, middleName, lastName, birth, nationality, passport, address]);
-
-    res.status(201).json({ message: "Passenger added", id: result.insertId });
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Failed to insert passenger");
-  }
-});
-*/
-
 // Update passenger (disallow reservationId and seatID updates)
 router.put("/:id", async (req, res) => {
   const passengerID = req.params.id;
@@ -120,5 +98,27 @@ router.delete("/:id", async (req, res) => {
     res.status(500).send("Failed to delete passenger");
   }
 });
+
+/* Add new passenger
+router.post("/", async (req, res) => {
+  const {
+    reservationId, seatID, firstName, middleName, lastName, birth,
+    nationality, passport, address
+  } = req.body;
+
+  try {
+    const [result] = await db.query(`
+      INSERT INTO Passenger 
+      (ReservationID, SeatID, Firstname, Middlename, Lastname, BirthDate, Nationality, PassportNumber, Address)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [reservationId, seatID, firstName, middleName, lastName, birth, nationality, passport, address]);
+
+    res.status(201).json({ message: "Passenger added", id: result.insertId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Failed to insert passenger");
+  }
+});
+*/
 
 export default router;

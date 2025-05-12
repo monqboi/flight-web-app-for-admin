@@ -82,6 +82,12 @@ watch(
   { immediate: true }
 );
 
+watch(() => props.airlineID, (newVal) => {
+  if (newVal) {
+    form.value.airlineID = newVal;
+  }
+}, { immediate: true });
+
 onMounted(async () => {
   if (airlineStore.airlines.length === 0) {
     await airlineStore.loadAirlines();
@@ -136,6 +142,13 @@ const confirmText = computed(() => {
   }
   return "";
 });
+
+/*
+watch(() => form.value, (newForm) => {
+  console.log("form data:", newForm);
+}, { deep: true });
+*/
+
 </script>
 
 <template>

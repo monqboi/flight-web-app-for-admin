@@ -240,7 +240,7 @@ function goBack() {
         <div class="modal-content user-form">
           <h3>{{ editIndex !== null ? 'Edit Reservation' : 'Add Reservation' }}</h3>
           <div class="form-row">
-            <input type="number" v-model="form.userId" placeholder="User ID" />
+            <input type="number" v-model="form.userId" placeholder="User ID" :disabled="editIndex !== null"/>
             <select v-model="form.seatNumber" class="seat-select">
               <option disabled value="">Select Seat</option>
               <option v-for="s in availableSeats" :key="s.SeatNumber" :value="s.SeatNumber">

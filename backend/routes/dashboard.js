@@ -21,10 +21,10 @@ router.get('/stats', async (req, res) => {
       { title: 'Users', value: countUsers },
       { title: 'Flights', value: countFlights },
       { title: 'Revenue', value: `${totalRevenue}฿` },
-      { title: 'Global', value: 'Online' } // mock
+      { title: 'Global', value: 'Online' } 
     ]);
   } catch (err) {
-    console.error("❌ Failed to load /stats:", err);
+    console.error("Failed to load /stats:", err);
     res.status(500).json({ error: 'Failed to load stats' });
   }
 });
@@ -42,17 +42,16 @@ router.get('/bookings', async (req, res) => {
         f.Duration,
         a.AirlineID,
         a.Name AS Airline,
+        MAX(r.BookingDate) AS LatestBooking,
         COUNT(p.PassengerID) AS passengerCount
       FROM Reservation r
       JOIN Flight f ON r.FlightID = f.FlightID
       JOIN Airline a ON f.AirlineID = a.AirlineID
       LEFT JOIN Passenger p ON p.ReservationID = r.ReservationID
-      GROUP BY r.ReservationID
-      ORDER BY r.BookingDate DESC
+      GROUP BY f.FlightID
+      ORDER BY LatestBooking DESC
       LIMIT 2
     `);
-
-    console.log("✅ Bookings query success:", results.length, "results");
 
     const bookings = results.map(r => {
       const departure = new Date(r.DepartureDateTime);
@@ -94,6 +93,7 @@ router.get('/bookings', async (req, res) => {
   }
 });
 
+
 // ---------- 3. Reservation Summary ----------
 router.get('/reservation-chart', async (req, res) => {
   try {
@@ -116,7 +116,7 @@ router.get('/reservation-chart', async (req, res) => {
       ]
     });
   } catch (err) {
-    console.error("❌ Error in /reservation-chart:", err);
+    console.error("Error in /reservation-chart:", err);
     res.status(500).json({ error: 'Failed to load reservation chart' });
   }
 });
@@ -144,7 +144,7 @@ router.get('/popular-airlines', async (req, res) => {
       ]
     });
   } catch (err) {
-    console.error("❌ Error in /popular-airlines:", err);
+    console.error("Error in /popular-airlines:", err);
     res.status(500).json({ error: 'Failed to load popular airlines chart' });
   }
 });
@@ -186,7 +186,7 @@ router.get('/schedule-chart', async (req, res) => {
       ]
     });
   } catch (err) {
-    console.error("❌ Error in /schedule-chart:", err);
+    console.error("Error in /schedule-chart:", err);
     res.status(500).json({ error: 'Failed to load flight schedule chart' });
   }
 });

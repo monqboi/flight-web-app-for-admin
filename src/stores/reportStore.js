@@ -36,7 +36,7 @@ export const useReportStore = defineStore('reportStore', {
       const map = {
         behaviorChart: 'top-destinations',
         frequentChart: 'top-customers',
-        cancelChart: 'cancel-heavy-flights',
+        cancelChart: 'cancel-heavy-airlines',
         priceChart: 'expensive-destinations'
       }
       try {

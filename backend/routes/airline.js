@@ -27,7 +27,7 @@ router.get("/", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error retrieving airlines");
-  }
+  } 
 });
 
 // Get a single Airline by ID

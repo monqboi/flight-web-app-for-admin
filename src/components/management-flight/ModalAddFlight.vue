@@ -64,7 +64,7 @@ const confirmMode = ref("");
 const showAircraftModal = ref(false);
 
 const statusOptions = [
-  { value: "pending", label: "Pending", class: "pending" },
+  { value: "scheduled", label: "Scheduled", class: "scheduled" },
   { value: "delayed", label: "Delayed", class: "delayed" },
   { value: "completed", label: "Completed", class: "completed" },
   { value: "canceled", label: "Canceled", class: "canceled" },
@@ -86,7 +86,7 @@ const formSchema = z.object({
     date: z.string().nonempty("Date is required"),
   }),
   duration: z.object({
-    time: z.preprocess((val) => Number(val), z.number().min(1, "Duration time must be greater than 0")),
+    time: z.preprocess((val) => Number(val), z.number().min(0, "Duration time must be 0 or greater")),
     stop: z.preprocess((val) => Number(val), z.number().min(0, "Stop count must be 0 or greater")),
   }),
   stopOvers: z.preprocess((val) => Array.isArray(val) ? val : [], z.array(z.string().min(1, "Each stop over must not be empty"))),
@@ -195,13 +195,13 @@ const confirmAddFlight = () => {
     form.value.stopOvers = form.value.stopOvers.map(s => (s || "").trim()).filter(s => s !== "");
   }
   const result = formSchema.safeParse(form.value);
-  console.log("✅ VALIDATION RESULT", result);
+  console.log("VALIDATION RESULT", result);
 
   if (result.success) {
     confirmMode.value = "success";
     showConfirmAddFlight();
   } else {
-    console.error("❌ Validation failed:", result.error.flatten());
+    console.error("Validation failed:", result.error.flatten());
   }
 };
 

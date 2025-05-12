@@ -249,9 +249,9 @@ function discardPayment() {
         <div class="form-row">
           <select v-model="form.paymentMethod" placeholder="Select Payment Method">
             <option disabled value="">Select Payment Method</option>
-            <option>Credit Card</option>
-            <option>Paypal</option>
-            <option>Bank Transfer</option>
+            <option>CreditCard</option>
+            <option>PayPal</option>
+            <option>BankTransfer</option>
           </select>
         </div>
       
