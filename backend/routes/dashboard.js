@@ -12,16 +12,17 @@ router.get('/stats', async (req, res) => {
       SELECT IFNULL(SUM(Amount), 0) AS totalRevenue
       FROM Payment WHERE Status = 'Successful'
     `);
-
+    const [passengerRes] = await db.query('SELECT COUNT(*) AS countPassengers FROM Passenger'); 
     const countUsers = usersRes?.[0]?.countUsers ?? 0;
     const countFlights = flightsRes?.[0]?.countFlights ?? 0;
     const totalRevenue = revenueRes?.[0]?.totalRevenue ?? 0;
-
+    const countPassengers = passengerRes?.[0]?.countPassengers ?? 0;
+      
     res.json([
       { title: 'Users', value: countUsers },
       { title: 'Flights', value: countFlights },
       { title: 'Revenue', value: totalRevenue },
-      { title: 'Global', value: 'Online' } 
+      { title: 'Passenger', value: countPassengers } 
     ]);
   } catch (err) {
     console.error("Failed to load /stats:", err);

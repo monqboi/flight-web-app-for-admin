@@ -134,6 +134,7 @@ router.get('/cancel-heavy-airlines', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch cancel-heavy airlines' });
   }
 });
+
 // Most Expensive Ticket per Destination
 router.get('/expensive-destinations', async (req, res) => {
   const top = parseInt(req.query.top) || 10;
