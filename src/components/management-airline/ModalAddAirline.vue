@@ -399,7 +399,7 @@ const selecedtedAirline = computed(() => {
                 <div
                   class="form-row inputs"
                   style="
-                    grid-template-columns: 1fr 2fr;
+                    grid-template-columns: .4fr .4fr 1fr;
                     gap: 20px;
                     align-items: center;
                   "

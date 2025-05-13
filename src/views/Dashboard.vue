@@ -462,11 +462,11 @@ const goToAirlineManagement = () => {
             <div class="section-header-icon">
               <div class="icon-label">
                 <span class="line-domestic"></span>
-                <p>Domestic</p>
+                <p>Departure</p>
               </div>
               <div class="icon-label">
                 <span class="line-international"></span>
-                <p>International</p>
+                <p>Arrival</p>
               </div>
             </div>
           </div>

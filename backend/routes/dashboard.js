@@ -153,7 +153,7 @@ router.get('/popular-airlines', async (req, res) => {
 // ---------- 5. Flights Schedule ----------
 router.get('/schedule-chart', async (req, res) => {
   try {
-    const [domestic] = await db.query(`
+    const [departureFlight] = await db.query(`
       SELECT DATE(DepartureDateTime) AS date, COUNT(*) AS count
       FROM Flight
       GROUP BY DATE(DepartureDateTime)
@@ -161,7 +161,7 @@ router.get('/schedule-chart', async (req, res) => {
       LIMIT 7
     `);
 
-    const [international] = await db.query(`
+    const [arrivalFlight] = await db.query(`
       SELECT DATE(DepartureDateTime) AS date, COUNT(*) AS count
       FROM Flight
       GROUP BY DATE(DepartureDateTime)
@@ -169,7 +169,7 @@ router.get('/schedule-chart', async (req, res) => {
       LIMIT 7
     `);
 
-    const allDates = [...new Set([...domestic, ...international].map(r => r.date))].sort();
+    const allDates = [...new Set([...departureFlight, ...arrivalFlight].map(r => r.date))].sort();
 
     const dataset = (source, label) => ({
       label,
@@ -182,8 +182,8 @@ router.get('/schedule-chart', async (req, res) => {
     res.json({
       labels: allDates,
       datasets: [
-        dataset(domestic, 'Domestic'),
-        dataset(international, 'International')
+        dataset(departureFlight, 'Departure'),
+        dataset(arrivalFlight, 'Arrival')
       ]
     });
   } catch (err) {
